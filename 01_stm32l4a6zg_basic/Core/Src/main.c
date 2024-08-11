@@ -42,6 +42,8 @@
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim6;
 
+UART_HandleTypeDef huart2;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -50,6 +52,7 @@ TIM_HandleTypeDef htim6;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM6_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -59,6 +62,7 @@ static void MX_TIM6_Init(void);
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if(htim == &htim6){
+	// LED2出力を反転させる
 	HAL_GPIO_TogglePin(GPIOB, LD2_Pin);
   }
 }
@@ -73,6 +77,8 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
   uint8_t data_sw;
+  uint8_t data_uart;
+  HAL_StatusTypeDef state_uart;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -94,7 +100,9 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_TIM6_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+  // TIM6を開始する
   HAL_TIM_Base_Start_IT(&htim6);
   /* USER CODE END 2 */
 
@@ -102,11 +110,19 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	// ユーザーSW入力を読み込む
 	data_sw = HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin);
+	// UART2受信を確認する
+	state_uart = HAL_UART_Receive(&huart2, &data_uart, 1, 0);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	// ユーザーSW入力で、LED3出力を更新する
 	HAL_GPIO_WritePin(GPIOB, LD3_Pin, data_sw);
+	// UART2受信があれば、UART2送信を行う
+	if (state_uart == HAL_OK) {
+	  HAL_UART_Transmit(&huart2, &data_uart, 1, 0);
+	}
   }
   /* USER CODE END 3 */
 }
@@ -199,6 +215,41 @@ static void MX_TIM6_Init(void)
 }
 
 /**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 9600;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -216,6 +267,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOG_CLK_ENABLE();
   HAL_PWREx_EnableVddIO2();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LD3_Pin|LD2_Pin, GPIO_PIN_RESET);
