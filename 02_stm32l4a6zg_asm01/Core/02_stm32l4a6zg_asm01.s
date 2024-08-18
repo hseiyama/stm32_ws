@@ -57,6 +57,12 @@ defined in linker script */
 
 /* アセンブラ記述開始(定義) */
 	.equ	DATA_INIT, 0x12345678	// データ初期値
+	.equ	RCC_AHB2ENR, (0x40021000 + 0x4C)	// AHB2 ペリフェラルクロック有効レジスタ
+	.equ	GPIOB_MODER, (0x48000400 + 0x00)	// GPIOB ポートモードレジスタ
+	.equ	GPIOB_ODR,   (0x48000400 + 0x14)	// GPIOB ポート出力データレジスタ
+	.equ	GPIOB_BSRR,  (0x48000400 + 0x18)	// GPIOB ポートビットセット/リセットレジスタ
+	.equ	GPIOC_MODER, (0x48000800 + 0x00)	// GPIOC ポートモードレジスタ
+	.equ	GPIOC_IDR,   (0x48000800 + 0x10)	// GPIOC ポート入力データレジスタ
 /* アセンブラ記述終了(定義) */
 
 /* アセンブラ記述開始(RAM領域) */
@@ -73,10 +79,45 @@ Reset_Handler:
 
 /* アセンブラ記述開始(Reset_Handler) */
 setup:
+	// ポート操作
+	ldr r0, =0x00000006
+	ldr r1, =RCC_AHB2ENR
+	str r0, [r1]					@ Set GPIOBEN,GPIOCEN bit in RCC_AHB2ENR to 1 to enable GPIOB
+	ldr r1, =GPIOB_MODER
+	ldr r0, [r1]
+	ldr r2, =0xCFFF3FFF
+	and r0, r2
+	ldr r2, =0x10004000
+	orr r0, r2
+	str r0, [r1]					@ Set MODE7,MODE14 in GPIOB_MODER to 1 (default:0xFFFFFEBF)
+	ldr r0, =0x00004080
+	ldr r1, =GPIOB_ODR
+	str r0, [r1]					@ Set OD7,OD14 in GPIOB_ODR to 1 to set PB7,PB14 high
+	ldr r1, =GPIOC_MODER
+	ldr r0, [r1]
+	ldr r2, =0xF3FFFFFF
+	and r0, r2
+	str r0, [r1]					@ Set MODE13 in GPIOC_MODER to 1 (default:0xFFFFFFFF)
+	// データ操作
 	adr r0, data_1st				// 初期値のアドレスをロード
 	ldr r1, [r0]					// データ初期値を取得
 	ldr r2, =data_2nd				// 転送先のアドレスをロード
 loop:
+	// ポート操作
+	ldr r3, =GPIOC_IDR
+	ldr r4, [r3]
+	ands r4, #0x00002000
+	bne sw_on
+	ldr r3, =0x40000000
+	ldr r4, =GPIOB_BSRR
+	str r3, [r4]					@ Set BR14 in GPIOB_BSRR to 1 to set PB14 low
+	b next
+sw_on:
+	ldr r3, =0x00004000
+	ldr r4, =GPIOB_BSRR
+	str r3, [r4]					@ Set BS14 in GPIOB_BSRR to 1 to set PB14 high
+next:
+	// データ操作
 	str r1, [r2]					// データをストア
 	add r1, #1						// データを更新
 	b loop							// loopへ分岐
