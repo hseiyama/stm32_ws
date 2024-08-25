@@ -66,6 +66,10 @@ defined in linker script */
 /* アセンブラ記述終了(定義) */
 
 /* アセンブラ記述開始(RAM領域) */
+    .section	.data
+data_3rd:							// データ増分値
+	.word	7
+
     .section	.bss
 data_2nd:							// データの転送先
 	.space	4
@@ -102,6 +106,9 @@ setup:
 	adr r0, data_1st				// 初期値のアドレスをロード
 	ldr r1, [r0]					// データ初期値を取得
 	ldr r2, =data_2nd				// 転送先のアドレスをロード
+	mov r5, #7						// 増分値の初期値を設定
+	ldr r0, =data_3rd				// 増分値のアドレスをロード
+	str r5, [r0]					// データ増分値を取得
 loop:
 	// ポート操作
 	ldr r3, =GPIOC_IDR
@@ -118,8 +125,12 @@ sw_on:
 	str r3, [r4]					@ Set BS14 in GPIOB_BSRR to 1 to set PB14 high
 next:
 	// データ操作
+	ldr r0, =data_3rd				// 増分値のアドレスをロード
+	ldr r5, [r0]					// データ増分値を取得
+	add r5, #1						// データ増分値を更新
+	str r5, [r0]					// データをストア
+	add r1, r5						// データを更新
 	str r1, [r2]					// データをストア
-	add r1, #1						// データを更新
 	b loop							// loopへ分岐
 
 data_1st:
