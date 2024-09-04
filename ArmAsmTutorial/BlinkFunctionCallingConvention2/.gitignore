@@ -1,0 +1,7 @@
+*.elf
+*.o
+*.list
+*.hex
+*.srec
+*.dump
+*.symbol
