@@ -30,29 +30,36 @@ Reset_Handler:
 
 .type Blink, %function
 Blink:
-	push { r4, lr }
-	
-	mov r4, r0
+	push { r4-r8, lr }
+	ldr r4, =GPIOB_BSRR			@ Load address of GPIOB_BSRR
+	ldr r5, =GPIOx_BSRR_BS14	@ Register value to set pin to high
+	ldr r6, =GPIOx_BSRR_BR14	@ Register value to set pin to low
+	ldr r7, =BlinkTable			@ Move address of "BlinkTable" into r7
+	ldr r8, =BlinkTableEnd		@ Move address of "BlinkTableEnd" into r8
 
 	BlinkLoop:
-		ldr r1, =GPIOB_BSRR					@ Load address of GPIOB_BSRR
-		ldr r2, =GPIOx_BSRR_BS14			@ Register value to set pin to high
-		str r2, [r1]						@ Set BS14 in GPIOB_BSRR to 1 to set PB14 high
+		str r5, [r4]			@ Set BS14 in GPIOB_BSRR to 1 to set PB14 high
 
-		ldr r0, =DelayLoopIterations		@ Iterations for delay loop
+		ldr r0, [r7], #4		@ Load delay iterations from table and increment address
 		bl Delay
 
-		ldr r1, =GPIOB_BSRR					@ Load address of GPIOB_BSRR
-		ldr r2, =GPIOx_BSRR_BR14				@ Register value to set pin to low
-		str r2, [r1]						@ Set BR14 in GPIOB_BSRR to 1 to set PB14 low
+		str r6, [r4]			@ Set BR14 in GPIOB_BSRR to 1 to set PB14 low
 
-		ldr r0, =DelayLoopIterations		@ Iterations for delay loop
+		ldr r0, [r7], #4		@ Load delay iterations from table and increment address
 		bl Delay
 
-		subs r4, #1
-		bne BlinkLoop
+		cmp r7, r8
+		blo BlinkLoop
 	
-	pop { r4, pc }
+	pop { r4-r8, pc }
+
+.align 2
+.type BlinkTable, %object
+BlinkTable:
+	.word	1000000, 1000000, 1000000, 1000000, 1000000, 1000000
+	.word	2500000, 1000000, 2500000, 1000000, 2500000, 1000000
+	.word	1000000, 1000000, 1000000, 1000000, 1000000, 1000000
+BlinkTableEnd:
 
 .type EnableClockGPIOB, %function
 EnableClockGPIOB:
