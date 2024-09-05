@@ -50,7 +50,7 @@ Blink:
 
 		cmp r7, r8
 		blo BlinkLoop
-	
+
 	pop { r4-r8, pc }
 
 .align 2

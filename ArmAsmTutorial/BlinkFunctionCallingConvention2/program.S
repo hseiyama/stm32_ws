@@ -31,7 +31,7 @@ Reset_Handler:
 .type Blink, %function
 Blink:
 	push { r4, lr }
-	
+
 	mov r4, r0
 
 	BlinkLoop:
@@ -51,7 +51,7 @@ Blink:
 
 		subs r4, #1
 		bne BlinkLoop
-	
+
 	pop { r4, pc }
 
 .type EnableClockGPIOB, %function
