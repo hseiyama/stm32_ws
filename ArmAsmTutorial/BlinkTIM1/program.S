@@ -5,7 +5,8 @@
 
 .include "stm32l4a6.inc"
 
-TimerValue=1500000
+TimerValue=1500
+TimerPrescaler=1000
 
 .data
 TimerEvents:
@@ -14,7 +15,6 @@ TimerEvents:
 .bss
 BlinkStep:
 	.space 1
-	.space 100
 
 .text
 .type Reset_Handler, %function
@@ -40,26 +40,32 @@ Reset_Handler:
 	blo 1b
 
 	bl EnableClockGPIOB
+	bl EnableClockTIM1
 	bl ConfigurePB14
 
 	ldr r1, =GPIOx_BSRR_BS14
 	ldr r0, =GPIOB					@ Load address of GPIOB_BSRR
 	str r1, [r0, #GPIOx_BSRR]
 
-	ldr r0, =TimerValue
-	bl StartSysTick
+	ldr r0, =TIM1_UP_IRQn
+	bl EnableIRQ
+	bl StartTIM1
 	1:
 		wfi
 		b 1b
 	.ltorg
 
-.type SysTick_Handler, %function
-.global SysTick_Handler
-SysTick_Handler:
-	ldr r0, =STK
-	ldr r0, [r0, #STK_CTRL]
-	tst r0, #0x10000
+.type TIM1_UP_TIM16_IRQHandler, %function
+.global TIM1_UP_TIM16_IRQHandler
+TIM1_UP_TIM16_IRQHandler:
+	ldr r0, =TIM1
+	ldr r2, =(~(1 << TIMx_SR_UIF))
+
+	ldr r1, [r0, #TIMx_SR]
+	bics r1, r2
 	beq 2f
+
+	str r2, [r0, #TIMx_SR]
 
 	ldr r0, =BlinkStep
 
@@ -117,6 +123,15 @@ EnableClockGPIOB:
 	str r0, [r1, #RCC_AHB2ENR]			@ Set GPIOBEN bit in RCC_AHB2ENR to 1 to enable GPIOB
 	bx lr								@ Return to caller
 
+.type EnableClockTIM1, %function
+EnableClockTIM1:
+	ldr r1, =RCC
+	ldr r0, [r1, #RCC_APB2ENR]
+	orr r0, r0, #(1 << RCC_APB2ENR_TIM1EN)
+	str r0, [r1, #RCC_APB2ENR]				@ Set TIM1EN bit in RCC_APB2ENR to 1 to enable TIM1
+	bx lr	@ Return to caller
+	.ltorg
+
 .type ConfigurePB14, %function
 ConfigurePB14:
 	ldr r1, =GPIOB
@@ -132,15 +147,46 @@ ConfigurePB14:
 	.ltorg
 
 @ r0 = Count-Down value for timer
-.type StartSysTick, %function
-StartSysTick:
-	ldr r1, =STK
+.type InitializeSysTick, %function
+StartTIM1:
+	ldr r0, =TIM1
+	ldr r1, =(1 << TIMx_CR1_URS)
+	str r1, [r0, #TIMx_CR1]
 
-	str r0, [r1, #STK_LOAD]
-	ldr r0, =0
-	str r0, [r1, #STK_VAL]
+	ldr r1, =TimerPrescaler
+	str r1, [r0, #TIMx_PSC]
 
-	ldr r0, =7
-	str r0, [r1, #STK_CTRL]
+	ldr r1, =TimerValue
+	str r1, [r0, #TIMx_ARR]
+
+	ldr r1, =(1 << TIMx_DIER_UIE)
+	str r1, [r0, #TIMx_DIER]
+
+	ldr r1, =(1 << TIMx_EGR_UG)
+	str r1, [r0, #TIMx_EGR]
+
+	dsb
+
+	ldr r1, =(1 << TIMx_CR1_CEN)
+	str r1, [r0, #TIMx_CR1]
 
 	bx lr
+	.ltorg
+
+@ r0 = IRQ Number
+.type EnableIRQ, %function
+EnableIRQ:
+	ldr r1, =NVIC_ISER0
+
+	movs r2, #1
+	and r3, r0, #0x1F
+	lsls r2, r2, r3
+
+	lsrs r3, r0, #5
+	lsls r3, r3, #2
+
+	str r2, [r1, r3]
+
+	bx lr
+	.ltorg
+
