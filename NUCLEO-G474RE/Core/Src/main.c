@@ -51,6 +51,9 @@ uint16_t u16_DataOut[16];
 uint8_t u8_DataIn[16] = {
 	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 uint8_t u8_DataOut[16];
+int s32s_DataCmp;
+int s16s_DataCmp;
+int s8s_DataCmp;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -82,12 +85,27 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+	/* mem_cpy */
 	mem_cpy32(&u32_DataOut[1], &u32_DataIn[1], 2);
-	mem_set32(&u32_DataOut[5], 0x12345678, 3);
 	mem_cpy16(&u16_DataOut[1], &u16_DataIn[1], 2);
-	mem_set16(&u16_DataOut[5], 0x9abc, 3);
 	mem_cpy08(&u8_DataOut[1], &u8_DataIn[1], 2);
+	/* mem_set */
+	mem_set32(&u32_DataOut[5], 0x12345678, 3);
+	mem_set16(&u16_DataOut[5], 0x9abc, 3);
 	mem_set08(&u8_DataOut[5], 0xde, 3);
+	/* mem_cmp */
+	mem_set32(&u32_DataIn[5], 0x12345678, 3);
+	s32s_DataCmp = mem_cmp32(&u32_DataOut[5], &u32_DataIn[5], 3);
+	u32_DataIn[6] = 0x23456789;
+	s32s_DataCmp = mem_cmp32(&u32_DataOut[5], &u32_DataIn[5], 3);
+	mem_set16(&u16_DataIn[5], 0x9abc, 3);
+	s16s_DataCmp = mem_cmp16(&u16_DataOut[5], &u16_DataIn[5], 3);
+	u16_DataIn[6] = 0xabcd;
+	s16s_DataCmp = mem_cmp16(&u16_DataOut[5], &u16_DataIn[5], 3);
+	mem_set08(&u8_DataIn[5], 0xde, 3);
+	s8s_DataCmp = mem_cmp08(&u8_DataOut[5], &u8_DataIn[5], 3);
+	u8_DataIn[6] = 0xab;
+	s8s_DataCmp = mem_cmp08(&u8_DataOut[5], &u8_DataIn[5], 3);
   /* USER CODE END Init */
 
   /* Configure the system clock */
