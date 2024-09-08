@@ -65,6 +65,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+	uint8_t u8_DataSw;
 
   /* USER CODE END 1 */
 
@@ -92,12 +93,13 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1) {
+		u8_DataSw = HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+		HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, u8_DataSw);
+	}
   /* USER CODE END 3 */
 }
 
