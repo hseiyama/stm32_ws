@@ -20,25 +20,6 @@ BlinkStep:
 .type main, %function
 .global main
 main:
-	ldr r0, =_DataStart
-	ldr r1, =_DataEnd
-	ldr r2, =_DataLoad
-
-	b 2f
-1:	ldr r3, [r2], #4
-	str r3, [r0], #4
-2:	cmp r0, r1
-	blo 1b
-
-	ldr r0, =_BssStart
-	ldr r1, =_BssEnd
-	ldr r2, =0
-
-	b 2f
-1:	str r2, [r0], #4
-2:	cmp r0, r1
-	blo 1b
-
 	bl EnableClockGPIOB
 	bl EnableClockTIM1
 	bl ConfigurePB14
