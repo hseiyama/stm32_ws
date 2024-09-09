@@ -1,7 +1,7 @@
 PREFIX=arm-none-eabi-
 S_SOURCES = vectortable.S startup.S program.S
 S_OBJECTS = vectortable.o startup.o program.o
-LDSCRIPT = stm32l4a6zg.ld
+LDSCRIPT = stm32g474re.ld
 
 program.elf : $(S_OBJECTS) $(LDSCRIPT)
 	$(PREFIX)ld -o program.elf $(S_OBJECTS) -T $(LDSCRIPT)
@@ -12,7 +12,7 @@ program.elf : $(S_OBJECTS) $(LDSCRIPT)
 	$(PREFIX)nm program.elf > program.symbol
 	$(PREFIX)readelf -S program.elf
 
-$(S_OBJECTS) : $(S_SOURCES) stm32l4a6.inc
+$(S_OBJECTS) : $(S_SOURCES) stm32g474.inc
 	$(PREFIX)as -g -o vectortable.o vectortable.S
 	$(PREFIX)as -g -o startup.o startup.S
 	$(PREFIX)as -g -o program.o program.S
@@ -20,10 +20,10 @@ $(S_OBJECTS) : $(S_SOURCES) stm32l4a6.inc
 .PHONY : gdbsrv program gdb clean
 
 gdbsrv :
-	openocd -f interface/stlink.cfg -f target/stm32l4x.cfg
+	openocd -f interface/stlink.cfg -f target/stm32g4x.cfg
 
 program : program.elf
-	openocd -f interface/stlink.cfg -f target/stm32l4x.cfg -c "program program.elf verify reset exit"
+	openocd -f interface/stlink.cfg -f target/stm32g4x.cfg -c "program program.elf verify reset exit"
 
 gdb : program.elf
 	$(PREFIX)gdb program.elf

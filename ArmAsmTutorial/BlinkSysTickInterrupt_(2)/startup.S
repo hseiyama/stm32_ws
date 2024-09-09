@@ -3,7 +3,7 @@
 .fpu softvfp
 .thumb
 
-.include "stm32l4a6.inc"
+.include "stm32g474.inc"
 
 .text
 .type Reset_Handler, %function

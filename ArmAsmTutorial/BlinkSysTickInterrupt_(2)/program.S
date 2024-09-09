@@ -3,7 +3,7 @@
 .fpu softvfp
 .thumb
 
-.include "stm32l4a6.inc"
+.include "stm32g474.inc"
 
 TimerValue=1500000
 
@@ -24,12 +24,12 @@ main:
 	ldr r1, BlinkTable
 	str r1, [r0, #(TimerEvents-Variables)]
 
-	bl EnableClockGPIOB
-	bl ConfigurePB14
+	bl EnableClockGPIOA
+	bl ConfigurePA5
 
-	ldr r1, =GPIOx_BSRR_BS14
-	ldr r0, =GPIOB
-	str r1, [r0, #GPIOx_BSRR]			@ Store address of GPIOB_BSRR
+	ldr r1, =GPIOx_BSRR_BS5
+	ldr r0, =GPIOA
+	str r1, [r0, #GPIOx_BSRR]			@ Store address of GPIOA_BSRR
 
 	ldr r0, =TimerValue
 	bl StartSysTick
@@ -72,11 +72,11 @@ SkipRestart:
 
 	ands r1, #1
 	ite eq
-	ldreq r1, =GPIOx_BSRR_BS14
-	ldrne r1, =GPIOx_BSRR_BR14
+	ldreq r1, =GPIOx_BSRR_BS5
+	ldrne r1, =GPIOx_BSRR_BR5
 
-	ldr r0, =GPIOB
-	str r1, [r0, #GPIOx_BSRR]			@ Store address of GPIOB_BSRR
+	ldr r0, =GPIOA
+	str r1, [r0, #GPIOx_BSRR]			@ Store address of GPIOA_BSRR
 
 Return:
 	bx lr
@@ -90,25 +90,25 @@ BlinkTableEnd:
 
 .align 2
 
-.type EnableClockGPIOB, %function
-EnableClockGPIOB:
+.type EnableClockGPIOA, %function
+EnableClockGPIOA:
 	ldr r1, =RCC
 	ldr r0, [r1, #RCC_AHB2ENR]
-	orr r0, r0, #(1 << RCC_AHB2ENR_GPIOBEN)
-	str r0, [r1, #RCC_AHB2ENR]			@ Set GPIOBEN bit in RCC_AHB2ENR to 1 to enable GPIOB
+	orr r0, r0, #(1 << RCC_AHB2ENR_GPIOAEN)
+	str r0, [r1, #RCC_AHB2ENR]			@ Set GPIOAEN bit in RCC_AHB2ENR to 1 to enable GPIOA
 	bx lr								@ Return to caller
 
-.type ConfigurePB14, %function
-ConfigurePB14:
-	ldr r1, =GPIOB
+.type ConfigurePA5, %function
+ConfigurePA5:
+	ldr r1, =GPIOA
 	ldr r0, [r1, #GPIOx_MODER]
-	and r0, #0xcfffffff
-	orr r0, #GPIOx_MODER_MODE14_OUT
-	str r0, [r1, #GPIOx_MODER]			@ Set MODE14 in GPIOB_MODER to 01b
+	and r0, #0xfffff3ff
+	orr r0, #GPIOx_MODER_MODE5_OUT
+	str r0, [r1, #GPIOx_MODER]			@ Set MODE5 in GPIOA_MODER to 01b
 	ldr r0, [r1, #GPIOx_OSPEEDR]
-	and r0, #0xcfffffff
-	orr r0, #GPIOx_OSPEEDR_OSPEED14_LOW
-	str r0, [r1, #GPIOx_OSPEEDR]		@ Set OSPEED14 in GPIOB_OSPEEDR to 00b
+	and r0, #0xfffff3ff
+	orr r0, #GPIOx_OSPEEDR_OSPEED5_LOW
+	str r0, [r1, #GPIOx_OSPEEDR]		@ Set OSPEED5 in GPIOA_OSPEEDR to 00b
 	bx lr
 	.ltorg
 
