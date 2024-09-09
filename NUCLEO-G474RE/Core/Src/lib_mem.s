@@ -17,7 +17,7 @@ mem_cpy32:
 	@ while (dst < dst_end)
 2:	cmp r0, r2
 	blo 1b
-	bx	lr
+	bx lr
 
 @ void mem_cpy16(uint16_t *dst, const uint16_t *src, size_t n)
 .type mem_cpy16, %function
@@ -32,7 +32,7 @@ mem_cpy16:
 	@ while (dst < dst_end)
 2:	cmp r0, r2
 	blo 1b
-	bx	lr
+	bx lr
 
 @ extern void mem_cpy08(uint8_t *dst, const uint8_t *src, size_t n)
 .type mem_cpy08, %function
@@ -47,7 +47,7 @@ mem_cpy08:
 	@ while (dst < dst_end)
 2:	cmp r0, r2
 	blo 1b
-	bx	lr
+	bx lr
 
 @ void mem_set32(uint32_t *s, uint32_t c, size_t n)
 .type mem_set32, %function
@@ -61,7 +61,7 @@ mem_set32:
 	@ while (s < s_end)
 2:	cmp r0, r2
 	blo 1b
-	bx	lr
+	bx lr
 
 @ void mem_set16(uint16_t *s, uint16_t c, size_t n)
 .type mem_set16, %function
@@ -75,7 +75,7 @@ mem_set16:
 	@ while (s < s_end)
 2:	cmp r0, r2
 	blo 1b
-	bx	lr
+	bx lr
 
 @ extern void mem_set08(uint8_t *s, uint8_t c, size_t n)
 .type mem_set08, %function
@@ -89,7 +89,7 @@ mem_set08:
 	@ while (s < s_end)
 2:	cmp r0, r2
 	blo 1b
-	bx	lr
+	bx lr
 
 @ int mem_cmp32(const uint32_t *s1, const uint32_t *s2, size_t n)
 .type mem_cmp32, %function
