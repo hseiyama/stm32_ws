@@ -1,11 +1,11 @@
 .syntax unified
-.cpu cortex-m4
+.cpu cortex-m0plus
 .fpu softvfp
 .thumb
 
-.include "stm32g474.inc"
+.include "stm32g0b1.inc"
 
-TimerValue=1500
+TimerValue=6000
 TimerPrescaler=1000
 
 .data
@@ -36,9 +36,9 @@ main:
 		b 1b
 	.ltorg
 
-.type TIM1_UP_TIM16_IRQHandler, %function
-.global TIM1_UP_TIM16_IRQHandler
-TIM1_UP_TIM16_IRQHandler:
+.type TIM1_BRK_UP_TRG_COM_IRQHandler, %function
+.global TIM1_BRK_UP_TRG_COM_IRQHandler
+TIM1_BRK_UP_TRG_COM_IRQHandler:
 	ldr r0, =TIM1
 	ldr r2, =(~(1 << TIMx_SR_UIF))
 
@@ -59,11 +59,16 @@ TIM1_UP_TIM16_IRQHandler:
 	ldrb r3, [r0]
 	subs r3, #1
 
-	itt ne
-	strbne r3, [r0]
-	bne 2f
-
-	add r1, #1
+//	itt ne										@ Cortex-M4 code
+//	strbne r3, [r0]								@ Cortex-M4 code
+//	bne 2f										@ Cortex-M4 code
+	beq 3f									@ for Cortex-M0+
+	strb r3, [r0]							@ for Cortex-M0+
+	b 2f									@ for Cortex-M0+
+3:											@ for Cortex-M0+
+//	add r1, #1									@ Cortex-M4 code
+	movs r2, #1								@ for Cortex-M0+
+	adds r1, r2								@ for Cortex-M0+
 	cmp r1, #(BlinkTableEnd-BlinkTable)
 	bhs 1f
 
@@ -75,11 +80,18 @@ TIM1_UP_TIM16_IRQHandler:
 	ldr r0, =BlinkStep
 	strb r1, [r0]
 
-	ands r1, #1
-	ite eq
-	ldreq r1, =GPIOx_BSRR_BS5
-	ldrne r1, =GPIOx_BSRR_BR5
-
+//	ands r1, #1									@ Cortex-M4 code
+	movs r2, #1								@ for Cortex-M0+
+	ands r1, r2								@ for Cortex-M0+
+//	ite eq										@ Cortex-M4 code
+//	ldreq r1, =GPIOx_BSRR_BS5					@ Cortex-M4 code
+//	ldrne r1, =GPIOx_BSRR_BR5					@ Cortex-M4 code
+	bne 4f									@ for Cortex-M0+
+	ldr r1, =GPIOx_BSRR_BS5					@ for Cortex-M0+
+	b 5f									@ for Cortex-M0+
+4:											@ for Cortex-M0+
+	ldr r1, =GPIOx_BSRR_BR5					@ for Cortex-M0+
+5:											@ for Cortex-M0+
 	ldr r0, =GPIOA
 	str r1, [r0, #GPIOx_BSRR]			@ Store address of GPIOA_BSRR
 
@@ -99,17 +111,21 @@ BlinkTableEnd:
 .type EnableClockGPIOA, %function
 EnableClockGPIOA:
 	ldr r1, =RCC
-	ldr r0, [r1, #RCC_AHB2ENR]
-	orr r0, r0, #(1 << RCC_AHB2ENR_GPIOAEN)
-	str r0, [r1, #RCC_AHB2ENR]			@ Set GPIOAEN bit in RCC_AHB2ENR to 1 to enable GPIOA
+	ldr r0, [r1, #RCC_IOPENR]
+//	orr r0, r0, #(1 << RCC_IOPENR_GPIOAEN)		@ Cortex-M4 code
+	movs r2, #(1 << RCC_IOPENR_GPIOAEN)		@ for Cortex-M0+
+	orrs r0, r2								@ for Cortex-M0+
+	str r0, [r1, #RCC_IOPENR]			@ Set GPIOAEN bit in RCC_IOPENR to 1 to enable GPIOA
 	bx lr								@ Return to caller
 
 .type EnableClockTIM1, %function
 EnableClockTIM1:
 	ldr r1, =RCC
-	ldr r0, [r1, #RCC_APB2ENR]
-	orr r0, r0, #(1 << RCC_APB2ENR_TIM1EN)
-	str r0, [r1, #RCC_APB2ENR]			@ Set TIM1EN bit in RCC_APB2ENR to 1 to enable TIM1
+	ldr r0, [r1, #RCC_APBENR2]
+//	orr r0, r0, #(1 << RCC_APBENR2_TIM1EN)		@ Cortex-M4 code
+	ldr r2, =(1 << RCC_APBENR2_TIM1EN)		@ for Cortex-M0+
+	orrs r0, r2								@ for Cortex-M0+
+	str r0, [r1, #RCC_APBENR2]			@ Set TIM1EN bit in RCC_APBENR2 to 1 to enable TIM1
 	bx lr								@ Return to caller
 	.ltorg
 
@@ -117,12 +133,20 @@ EnableClockTIM1:
 ConfigurePA5:
 	ldr r1, =GPIOA
 	ldr r0, [r1, #GPIOx_MODER]
-	and r0, #0xfffff3ff
-	orr r0, #GPIOx_MODER_MODE5_OUT
+//	and r0, #0xfffff3ff							@ Cortex-M4 code
+	ldr r2, =0xfffff3ff						@ for Cortex-M0+
+	ands r0, r2								@ for Cortex-M0+
+//	orr r0, #GPIOx_MODER_MODE5_OUT				@ Cortex-M4 code
+	ldr r2, =GPIOx_MODER_MODE5_OUT			@ for Cortex-M0+
+	orrs r0, r2								@ for Cortex-M0+
 	str r0, [r1, #GPIOx_MODER]			@ Set MODE5 in GPIOA_MODER to 01b
 	ldr r0, [r1, #GPIOx_OSPEEDR]
-	and r0, #0xfffff3ff
-	orr r0, #GPIOx_OSPEEDR_OSPEED5_LOW
+//	and r0, #0xfffff3ff							@ Cortex-M4 code
+	ldr r2, =0xfffff3ff						@ for Cortex-M0+
+	ands r0, r2								@ for Cortex-M0+
+//	orr r0, #GPIOx_OSPEEDR_OSPEED5_LOW			@ Cortex-M4 code
+	ldr r2, =#GPIOx_OSPEEDR_OSPEED5_LOW		@ for Cortex-M0+
+	orrs r0, r2								@ for Cortex-M0+
 	str r0, [r1, #GPIOx_OSPEEDR]		@ Set OSPEED5 in GPIOA_OSPEEDR to 00b
 	bx lr
 	.ltorg
@@ -157,10 +181,12 @@ StartTIM1:
 @ r0 = IRQ Number
 .type EnableIRQ, %function
 EnableIRQ:
-	ldr r1, =NVIC_ISER0
+	ldr r1, =NVIC_ISER
 
 	movs r2, #1
-	and r3, r0, #0x1F
+//	and r3, r0, #0x1F							@ Cortex-M4 code
+	movs r3, #0x1F							@ for Cortex-M0+
+	ands r3, r0								@ for Cortex-M0+
 	lsls r2, r2, r3
 
 	lsrs r3, r0, #5

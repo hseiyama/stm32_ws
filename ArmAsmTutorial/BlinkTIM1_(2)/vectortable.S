@@ -1,5 +1,5 @@
 .syntax unified
-.cpu cortex-m4
+.cpu cortex-m0plus
 .fpu softvfp
 .thumb
 
@@ -20,120 +20,49 @@ VectorTable:
 	defisr	Reset_Handler
 	defisr	NMI_Handler
 	defisr	HardFault_Handler
-	defisr	MemManage_Handler
-	defisr	BusFault_Handler
-	defisr	UsageFault_Handler
+	.word	0
+	.word	0
+	.word	0
 	.word	0
 	.word	0
 	.word	0
 	.word	0
 	defisr	SVC_Handler
-	defisr	DebugMon_Handler
+	.word	0
 	.word	0
 	defisr	PendSV_Handler
 	defisr	SysTick_Handler
-	defisr	WWDG_IRQHandler
-	defisr	PVD_PVM_IRQHandler
-	defisr	RTC_TAMP_LSECSS_IRQHandler
-	defisr	RTC_WKUP_IRQHandler
-	defisr	FLASH_IRQHandler
-	defisr	RCC_IRQHandler
-	defisr	EXTI0_IRQHandler
-	defisr	EXTI1_IRQHandler
-	defisr	EXTI2_IRQHandler
-	defisr	EXTI3_IRQHandler
-	defisr	EXTI4_IRQHandler
-	defisr	DMA1_Channel1_IRQHandler
-	defisr	DMA1_Channel2_IRQHandler
-	defisr	DMA1_Channel3_IRQHandler
-	defisr	DMA1_Channel4_IRQHandler
-	defisr	DMA1_Channel5_IRQHandler
-	defisr	DMA1_Channel6_IRQHandler
-	defisr	DMA1_Channel7_IRQHandler
-	defisr	ADC1_2_IRQHandler
-	defisr	USB_HP_IRQHandler
-	defisr	USB_LP_IRQHandler
-	defisr	FDCAN1_IT0_IRQHandler
-	defisr	FDCAN1_IT1_IRQHandler
-	defisr	EXTI9_5_IRQHandler
-	defisr	TIM1_BRK_TIM15_IRQHandler
-	defisr	TIM1_UP_TIM16_IRQHandler
-	defisr	TIM1_TRG_COM_TIM17_IRQHandler
-	defisr	TIM1_CC_IRQHandler
-	defisr	TIM2_IRQHandler
-	defisr	TIM3_IRQHandler
-	defisr	TIM4_IRQHandler
-	defisr	I2C1_EV_IRQHandler
-	defisr	I2C1_ER_IRQHandler
-	defisr	I2C2_EV_IRQHandler
-	defisr	I2C2_ER_IRQHandler
-	defisr	SPI1_IRQHandler
-	defisr	SPI2_IRQHandler
-	defisr	USART1_IRQHandler
-	defisr	USART2_IRQHandler
-	defisr	USART3_IRQHandler
-	defisr	EXTI15_10_IRQHandler
-	defisr	RTC_Alarm_IRQHandler
-	defisr	USBWakeUp_IRQHandler
-	defisr	TIM8_BRK_IRQHandler
-	defisr	TIM8_UP_IRQHandler
-	defisr	TIM8_TRG_COM_IRQHandler
-	defisr	TIM8_CC_IRQHandler
-	defisr	ADC3_IRQHandler
-	defisr	FMC_IRQHandler
-	defisr	LPTIM1_IRQHandler
-	defisr	TIM5_IRQHandler
-	defisr	SPI3_IRQHandler
-	defisr	UART4_IRQHandler
-	defisr	UART5_IRQHandler
-	defisr	TIM6_DAC_IRQHandler
-	defisr	TIM7_DAC_IRQHandler
-	defisr	DMA2_Channel1_IRQHandler
-	defisr	DMA2_Channel2_IRQHandler
-	defisr	DMA2_Channel3_IRQHandler
-	defisr	DMA2_Channel4_IRQHandler
-	defisr	DMA2_Channel5_IRQHandler
-	defisr	ADC4_IRQHandler
-	defisr	ADC5_IRQHandler
-	defisr	UCPD1_IRQHandler
-	defisr	COMP1_2_3_IRQHandler
-	defisr	COMP4_5_6_IRQHandler
-	defisr	COMP7_IRQHandler
-	defisr	HRTIM1_Master_IRQHandler
-	defisr	HRTIM1_TIMA_IRQHandler
-	defisr	HRTIM1_TIMB_IRQHandler
-	defisr	HRTIM1_TIMC_IRQHandler
-	defisr	HRTIM1_TIMD_IRQHandler
-	defisr	HRTIM1_TIME_IRQHandler
-	defisr	HRTIM1_FLT_IRQHandler
-	defisr	HRTIM1_TIMF_IRQHandler
-	defisr	CRS_IRQHandler
-	defisr	SAI1_IRQHandler
-	defisr	TIM20_BRK_IRQHandler
-	defisr	TIM20_UP_IRQHandler
-	defisr	TIM20_TRG_COM_IRQHandler
-	defisr	TIM20_CC_IRQHandler
-	defisr	FPU_IRQHandler
-	defisr	I2C4_EV_IRQHandler
-	defisr	I2C4_ER_IRQHandler
-	defisr	SPI4_IRQHandler
-	.word	0
-	defisr	FDCAN2_IT0_IRQHandler
-	defisr	FDCAN2_IT1_IRQHandler
-	defisr	FDCAN3_IT0_IRQHandler
-	defisr	FDCAN3_IT1_IRQHandler
-	defisr	RNG_IRQHandler
-	defisr	LPUART1_IRQHandler
-	defisr	I2C3_EV_IRQHandler
-	defisr	I2C3_ER_IRQHandler
-	defisr	DMAMUX_OVR_IRQHandler
-	defisr	QUADSPI_IRQHandler
-	defisr	DMA1_Channel8_IRQHandler
-	defisr	DMA2_Channel6_IRQHandler
-	defisr	DMA2_Channel7_IRQHandler
-	defisr	DMA2_Channel8_IRQHandler
-	defisr	CORDIC_IRQHandler
-	defisr	FMAC_IRQHandler
+	defisr	WWDG_IRQHandler                   /* Window WatchDog              */
+	defisr	PVD_VDDIO2_IRQHandler             /* PVD through EXTI Line detect */
+	defisr	RTC_TAMP_IRQHandler               /* RTC through the EXTI line    */
+	defisr	FLASH_IRQHandler                  /* FLASH                        */
+	defisr	RCC_CRS_IRQHandler                /* RCC & CRS                    */
+	defisr	EXTI0_1_IRQHandler                /* EXTI Line 0 and 1            */
+	defisr	EXTI2_3_IRQHandler                /* EXTI Line 2 and 3            */
+	defisr	EXTI4_15_IRQHandler               /* EXTI Line 4 to 15            */
+	defisr	USB_UCPD1_2_IRQHandler            /* USB, UCPD1, UCPD2            */
+	defisr	DMA1_Channel1_IRQHandler          /* DMA1 Channel 1               */
+	defisr	DMA1_Channel2_3_IRQHandler        /* DMA1 Channel 2 and Channel 3 */
+	defisr	DMA1_Ch4_7_DMA2_Ch1_5_DMAMUX1_OVR_IRQHandler /* DMA1 Ch4 to Ch7, DMA2 Ch1 to Ch5, DMAMUX1 overrun */
+	defisr	ADC1_COMP_IRQHandler              /* ADC1, COMP1 and COMP2         */
+	defisr	TIM1_BRK_UP_TRG_COM_IRQHandler    /* TIM1 Break, Update, Trigger and Commutation */
+	defisr	TIM1_CC_IRQHandler                /* TIM1 Capture Compare         */
+	defisr	TIM2_IRQHandler                   /* TIM2                         */
+	defisr	TIM3_TIM4_IRQHandler              /* TIM3, TIM4                   */
+	defisr	TIM6_DAC_LPTIM1_IRQHandler        /* TIM6, DAC and LPTIM1         */
+	defisr	TIM7_LPTIM2_IRQHandler            /* TIM7 and LPTIM2              */
+	defisr	TIM14_IRQHandler                  /* TIM14                        */
+	defisr	TIM15_IRQHandler                  /* TIM15                        */
+	defisr	TIM16_FDCAN_IT0_IRQHandler        /* TIM16 & FDCAN1_IT0 & FDCAN2_IT0 */
+	defisr	TIM17_FDCAN_IT1_IRQHandler        /* TIM17 & FDCAN1_IT1 & FDCAN2_IT1 */
+	defisr	I2C1_IRQHandler                   /* I2C1                         */
+	defisr	I2C2_3_IRQHandler                 /* I2C2, I2C3                   */
+	defisr	SPI1_IRQHandler                   /* SPI1                         */
+	defisr	SPI2_3_IRQHandler                 /* SPI2, SPI3                   */
+	defisr	USART1_IRQHandler                 /* USART1                       */
+	defisr	USART2_LPUART2_IRQHandler         /* USART2 & LPUART2             */
+	defisr	USART3_4_5_6_LPUART1_IRQHandler   /* USART3, USART4, USART5, USART6, LPUART1   */
+	defisr	CEC_IRQHandler                    /* CEC                          */
 
 @ Default_Handler
 .text
