@@ -5,7 +5,7 @@
 
 .include "stm32g474.inc"
 
-TimerValue=1500000
+TimerValue=6000000
 
 .data
 Variables:
@@ -20,9 +20,9 @@ TimerEvents:
 main:
 	ldr r0, =Variables
 	ldr r1, =0
-	str r1, [r0, #(BlinkStep-Variables)]
+	strb r1, [r0, #(BlinkStep-Variables)]
 	ldr r1, BlinkTable
-	str r1, [r0, #(TimerEvents-Variables)]
+	strb r1, [r0, #(TimerEvents-Variables)]
 
 	bl EnableClockGPIOA
 	bl ConfigurePA5
