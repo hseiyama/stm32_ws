@@ -5,7 +5,7 @@
 
 .include "stm32g474.inc"
 
-TimerValue=1500
+TimerValue=6000
 TimerPrescaler=1000
 
 .data
