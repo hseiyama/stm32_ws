@@ -1,0 +1,38 @@
+【ビルド用のコマンド】
+arm-none-eabi-as -g prog1.S -o prog1.o
+arm-none-eabi-ld prog1.o -o prog1.elf -Ttext=0x8000000
+
+【HEXファイルの出力】
+arm-none-eabi-objdump -h -S prog1.elf  > "prog1.list"
+arm-none-eabi-objcopy  -O ihex prog1.elf  "prog1.hex"
+arm-none-eabi-objcopy  -O srec prog1.elf  "prog1.srec"
+
+【フラッシュ書き込み】
+openocd -f interface/stlink.cfg -f target/stm32l4x.cfg -c "program prog1.elf verify reset exit"
+【デバッグのサーバー側を起動】
+openocd -f interface/stlink.cfg -f target/stm32l4x.cfg
+
+【デバッグのクライアント側を起動】
+arm-none-eabi-gdb prog1.elf
+(gdb) target remote :3333
+(gdb) load
+(gdb) monitor reset init
+(gdb) info reg
+(gdb) stepi
+(gdb) continue
+<Ctrl+C>
+(gdb) kill
+(gdb) quit
+
+(gdb) target remote :3333
+(gdb) load
+(gdb) monitor reset init
+(gdb) b prog1.S:17
+(gdb) c
+(gdb) i reg　※レジスタを表示
+(gdb) n　※ステップ実行(1行ずつ実行/関数は飛ばす)
+(gdb) i b　※ブレークポイント一覧を表示
+(gdb) d 1　※番号に対応するブレークポイントを削除
+(gdb) l　※ソースコードを表示
+(gdb) x/10wx 0x4002104c　※メモリの内容を表示(n:繰り返し回数/w:Words(4bytes)/x:16進数表示)
+(gdb) i f　※スタックを表示
