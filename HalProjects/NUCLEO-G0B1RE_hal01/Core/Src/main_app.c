@@ -41,6 +41,8 @@ void setup(void)
   */
 void loop(void)
 {
+	uint8_t u8_DataUart;
+
 	/* 1秒判定時間が満了した場合 */
 	if (checkTimer(&sts_Timer1s, TIME_1S)) {
 		/* LED_GREENを反転出力する */
@@ -54,6 +56,12 @@ void loop(void)
 	if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_RESET) {
 		/* LED_GREENをHIGH出力する */
 		HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET);
+	}
+
+	/* UART2受信が確認された場合 */
+	if (HAL_UART_Receive(&huart2, &u8_DataUart, 1, 0) == HAL_OK) {
+		/* UART2送信を行う */
+		HAL_UART_Transmit(&huart2, &u8_DataUart, 1, 0);
 	}
 }
 

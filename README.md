@@ -8,5 +8,5 @@
 JAVA_TOOL_OPTIONS | -Dfile.encoding=UTF-8
 
 ## 参考になる情報
-### (1) ARM-ASM-Tutorial (ARMプロセッサのアセンブラについて理解できる)
-[Mikrocontroller.netのリンクはこちらです。](https://www.mikrocontroller.net/articles/ARM-ASM-Tutorial)
+### (1) ARM-ASM-Tutorial (ARMプロセッサのアセンブラ理解の一助となる)
+[Mikrocontroller.net のリンクはこちら。](https://www.mikrocontroller.net/articles/ARM-ASM-Tutorial)
