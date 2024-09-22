@@ -58,8 +58,8 @@ static void MX_TIM6_Init(void);
 /* USER CODE BEGIN 0 */
 
 /**
-  * @brief TIM6のタイマー時間(1ms)経過時のコールバック関数
-  * @param htim タイマーのハンドル
+  * @brief Period elapsed callback in non-blocking mode
+  * @param htim TIM handle
   * @retval None
   */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
