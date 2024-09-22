@@ -40,13 +40,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (huart == &huart2) {
 		mem_cpy08(&u8s_TxBuffer[0], &u8s_RxBuffer[0], UART_BUFF_SIZE);
-		/* UART送信(割り込み)を開始 */
-		if (HAL_UART_Transmit_IT(&huart2, &u8s_TxBuffer[0], UART_TXBF_SIZE) != HAL_OK) {
+		/* UART送信(DMA)を開始 */
+		if (HAL_UART_Transmit_DMA(&huart2, &u8s_TxBuffer[0], UART_TXBF_SIZE) != HAL_OK) {
 			/* Transmission Error */
 			Error_Handler();
 		}
-		/* UART受信(割り込み)を開始 */
-		if (HAL_UART_Receive_IT(&huart2, &u8s_RxBuffer[0], UART_BUFF_SIZE) != HAL_OK) {
+		/* UART受信(DMA)を開始 */
+		if (HAL_UART_Receive_DMA(&huart2, &u8s_RxBuffer[0], UART_BUFF_SIZE) != HAL_OK) {
 			/* Reception Error */
 			Error_Handler();
 		}
@@ -91,14 +91,14 @@ void setup(void)
 	/* タイマーを開始する */
 	startTimer(&sts_Timer1s);
 
-	/* UART送信(割り込み)を開始 */
-	if (HAL_UART_Transmit_IT(&huart2, &OpeningMsg[0], sizeof(OpeningMsg)) != HAL_OK) {
+	/* UART送信(DMA)を開始 */
+	if (HAL_UART_Transmit_DMA(&huart2, &OpeningMsg[0], sizeof(OpeningMsg)) != HAL_OK) {
 		/* Transmission Error */
 		Error_Handler();
 	}
 
-	/* UART受信(割り込み)を開始 */
-	if (HAL_UART_Receive_IT(&huart2, &u8s_RxBuffer[0], UART_BUFF_SIZE) != HAL_OK) {
+	/* UART受信(DMA)を開始 */
+	if (HAL_UART_Receive_DMA(&huart2, &u8s_RxBuffer[0], UART_BUFF_SIZE) != HAL_OK) {
 		/* Reception Error */
 		Error_Handler();
 	}
