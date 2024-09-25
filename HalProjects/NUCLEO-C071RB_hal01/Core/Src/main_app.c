@@ -164,6 +164,11 @@ void loop(void)
 			/* ADC conversion start Error */
 			Error_Handler();
 		}
+		/* ADC(DMA)の終了を待つ(最大1ms) */
+		if (HAL_ADC_PollForConversion(&hadc1, 2) != HAL_OK) {
+			/* ADC conversion polling Error */
+			Error_Handler();
+		}
 
 		/* タイマーを再開する */
 		startTimer(&sts_Timer1s);
