@@ -37,10 +37,30 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
+/* boolean型 */
+typedef enum _bool {
+	false = 0,						/* false(偽)					*/
+	true = 1						/* true(真)						*/
+} bool;
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+
+/* ON/OFF定義 */
+#define OFF					(0)
+#define ON					(1)
+
+/* OK/NG定義 */
+#define NG					(0)
+#define OK					(1)
+
+/* LOW/HIGH定義 */
+#define LOW					(0)
+#define HIGH				(1)
+
+#define SYS_CYCLE_TIME		(5)		/* システムの周期時間[ms]		*/
 
 /* USER CODE END EC */
 
@@ -54,6 +74,10 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
+/* main_app.c */
+extern void setup(void);			/* 初期化関数					*/
+extern void loop(void);				/* 周期処理関数					*/
+
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -65,6 +89,8 @@ void Error_Handler(void);
 #define LD2_GPIO_Port GPIOC
 
 /* USER CODE BEGIN Private defines */
+extern UART_HandleTypeDef huart2;
+extern ADC_HandleTypeDef hadc1;
 
 /* USER CODE END Private defines */
 
