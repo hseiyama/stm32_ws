@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "drv.h"
 #include "lib.h"
 /* USER CODE END Includes */
 
@@ -107,6 +108,10 @@ int main(void)
   PeriphCommonClock_Config();
 
   /* USER CODE BEGIN SysInit */
+	/* ADCドライバー初期化処理 */
+	taskAdcDriverInit();
+	/* UARTドライバー初期化処理 */
+	taskUartDriverInit();
 	/* タイマー初期化処理 */
 	taskTimerInit();
   /* USER CODE END SysInit */
@@ -144,8 +149,16 @@ int main(void)
 
 			/* タイマー更新処理 */
 			taskTimerUpdate();
+			/* ADCドライバー入力処理 */
+			taskAdcDriverInput();
+			/* UARTドライバー入力処理 */
+			taskUartDriverInput();
 			/* 周期処理関数 */
 			loop();
+			/* ADCドライバー出力処理 */
+			taskAdcDriverOutput();
+			/* UARTドライバー出力処理 */
+			taskUartDriverOutput();
 		}
 	}
   /* USER CODE END 3 */
