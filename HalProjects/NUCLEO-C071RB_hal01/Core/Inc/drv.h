@@ -22,9 +22,9 @@ typedef struct _QueueControl {
 
 /* ADCチャネル情報 */
 enum AdcChannelInfo {
-	ADC_CHANNEL_00 = 0,				/* ADCのチャネル0				*/
-	ADC_CHANNEL_01,					/* ADCのチャネル1				*/
-	ADC_CHANNEL_04,					/* ADCのチャネル4				*/
+	ADC_CHANNEL_IN0 = 0,			/* ADCのチャネルIN0				*/
+	ADC_CHANNEL_IN1,				/* ADCのチャネルIN1				*/
+	ADC_CHANNEL_IN4,				/* ADCのチャネルIN4				*/
 	ADC_CHANNEL_MAX					/* ADCのチャネル上限			*/
 };
 
