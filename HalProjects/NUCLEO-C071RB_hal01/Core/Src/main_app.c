@@ -19,14 +19,11 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-
-/* プログラム開始メッセージ */
-const uint8_t OpeningMsg[] = "Start UART sample!!\r\n";
-
 static Timer sts_Timer1s;									/* 1秒タイマー				*/
 static uint8_t u8s_TxBuffer[UART_BUFF_SIZE];				/* UART送信バッファ			*/
 static uint8_t u8s_RxBuffer[UART_BUFF_SIZE];				/* UART受信バッファ			*/
 static uint16_t u16s_AdcData[ADC_CHANNEL_MAX];				/* ADCデータ(全チャネル)	*/
+static uint8_t u8s_AdcDispState;							/* ADC表示状態				*/
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -42,6 +39,7 @@ void setup(void)
 	mem_set08(&u8s_TxBuffer[0], 0x00, UART_BUFF_SIZE);
 	mem_set08(&u8s_RxBuffer[0], 0x00, UART_BUFF_SIZE);
 	mem_set16(&u16s_AdcData[0], ADC_FAILURE_VALUE, ADC_CHANNEL_MAX);
+	u8s_AdcDispState = ON;
 
 	/* UART送信バッファに改行コードをセット */
 	u8s_TxBuffer[UART_RX_BLOCK_SIZE] = '\r';			/* CRコード					*/
@@ -50,8 +48,8 @@ void setup(void)
 	/* タイマーを開始する */
 	startTimer(&sts_Timer1s);
 
-	/* UART送信データを登録する */
-	uartSetTxData((uint8_t *)&OpeningMsg[0], sizeof(OpeningMsg));
+	/* プログラム開始メッセージを表示する */
+	uartEchoStr("Start ADC/UART sample!!\r\n");
 }
 
 /**
@@ -72,6 +70,19 @@ void loop(void)
 		mem_cpy08(&u8s_TxBuffer[0], &u8s_RxBuffer[0], u16_RxSize);
 		/* UART送信データを登録する */
 		uartSetTxData(&u8s_TxBuffer[0], u16_RxSize + 2);
+
+		/* ADC表示状態の切替え(OFF) */
+		if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"adc0", UART_RX_BLOCK_SIZE) == 0) {
+			u8s_AdcDispState = OFF;
+		}
+		/* ADC表示状態の切替え(ON) */
+		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"adc1", UART_RX_BLOCK_SIZE) == 0) {
+			u8s_AdcDispState = ON;
+		}
+		/* システムリセットの要求 */
+		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"rst0", UART_RX_BLOCK_SIZE) == 0) {
+			NVIC_SystemReset();
+		}
 	}
 
 	/* ADCデータを取得する */
@@ -85,6 +96,17 @@ void loop(void)
 		/* LEDを反転出力する */
 		HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
 		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+
+		/* ADC表示状態がONの場合 */
+		if (u8s_AdcDispState == ON) {
+			/* ADCデータを表示する */
+			uartEchoStr("ADC =");
+			for (u16_Index = 0; u16_Index < ADC_CHANNEL_MAX; u16_Index++) {
+				uartEchoStr(" ");
+				uartEchoHex16(u16s_AdcData[u16_Index]);
+			}
+			uartEchoStr("\r\n");
+		}
 
 		/* タイマーを再開する */
 		startTimer(&sts_Timer1s);

@@ -51,5 +51,9 @@ extern void taskUartDriverOutput(void);										/* UARTドライバー出力処
 extern uint16_t uartSetTxData(const uint8_t *pu8_Data, uint16_t u16_Size);	/* UART送信データを登録する				*/
 extern uint16_t uartGetRxData(uint8_t *pu8_Data, uint16_t u16_Size);		/* UART受信データを取得する				*/
 extern uint16_t uartGetRxCount(void);										/* UART受信データの数を取得する			*/
+extern void uartEchoHex8(uint8_t u8_Data);									/* Hex1Byte表示処理						*/
+extern void uartEchoHex16(uint16_t u16_Data);								/* Hex2Byte表示処理						*/
+extern void uartEchoHex32(uint32_t u32_Data);								/* Hex4Byte表示処理						*/
+extern void uartEchoStr(const char *ps8_Data);								/* 文字列表示処理						*/
 
 #endif /* __DRV_H */

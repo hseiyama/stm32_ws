@@ -167,6 +167,51 @@ uint16_t uartGetRxCount(void)
 	return sts_UartRxQueue.u16_count;
 }
 
+/**
+  * @brief Hex1Byte表示処理
+  * @param u8_Data データ
+  * @retval None
+  */
+void uartEchoHex8(uint8_t u8_Data) {
+	const uint8_t HexTable[] = {
+		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+	};
+	setUartTxQueue(&HexTable[(u8_Data >> 4) & 0x0F], 1);
+	setUartTxQueue(&HexTable[u8_Data & 0x0F], 1);
+}
+
+/**
+  * @brief Hex2Byte表示処理
+  * @param u16_Data データ
+  * @retval None
+  */
+void uartEchoHex16(uint16_t u16_Data) {
+	uartEchoHex8((u16_Data >> 8) & 0xFF);
+	uartEchoHex8(u16_Data & 0xFF);
+}
+
+/**
+  * @brief Hex4Byte表示処理
+  * @param u32_Data データ
+  * @retval None
+  */
+void uartEchoHex32(uint32_t u32_Data) {
+	uartEchoHex16((u32_Data >> 16) & 0xFFFF);
+	uartEchoHex16(u32_Data & 0xFFFF);
+}
+
+/**
+  * @brief 文字列表示処理
+  * @param pu8_Data データのポインタ
+  * @retval None
+  */
+void uartEchoStr(const char *ps8_Data) {
+	while (*ps8_Data != 0x00) {
+		setUartTxQueue((uint8_t *)ps8_Data, 1);
+		ps8_Data++;
+	}
+}
+
 /* Private functions ---------------------------------------------------------*/
 
 /**
