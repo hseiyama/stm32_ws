@@ -89,8 +89,6 @@ extern void loop(void);				/* 周期処理関数					*/
 #define LD2_GPIO_Port GPIOC
 
 /* USER CODE BEGIN Private defines */
-extern UART_HandleTypeDef huart2;
-extern ADC_HandleTypeDef hadc1;
 
 /* USER CODE END Private defines */
 

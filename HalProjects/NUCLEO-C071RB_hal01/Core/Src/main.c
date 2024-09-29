@@ -108,10 +108,6 @@ int main(void)
   PeriphCommonClock_Config();
 
   /* USER CODE BEGIN SysInit */
-	/* ADCドライバー初期化処理 */
-	taskAdcDriverInit();
-	/* UARTドライバー初期化処理 */
-	taskUartDriverInit();
 	/* タイマー初期化処理 */
 	taskTimerInit();
   /* USER CODE END SysInit */
@@ -123,6 +119,10 @@ int main(void)
   MX_TIM14_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+	/* ADCドライバー初期化処理 */
+	taskAdcDriverInit();
+	/* UARTドライバー初期化処理 */
+	taskUartDriverInit();
 	/* 初期化関数 */
 	setup();
 

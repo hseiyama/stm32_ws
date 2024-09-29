@@ -13,9 +13,28 @@
 
 /* Exported types ------------------------------------------------------------*/
 
+/* キュー制御情報 */
+typedef struct _QueueControl {
+	uint16_t u16_head;				/* 先頭データのインデックス				*/
+	uint16_t u16_tail;				/* 末尾データのインデックス				*/
+	uint16_t u16_count;				/* データの登録数						*/
+} QueueControl;
+
+/* ADCチャネル情報 */
+enum AdcChannelInfo {
+	ADC_CHANNEL_00 = 0,				/* ADCのチャネル0				*/
+	ADC_CHANNEL_01,					/* ADCのチャネル1				*/
+	ADC_CHANNEL_04,					/* ADCのチャネル4				*/
+	ADC_CHANNEL_MAX					/* ADCのチャネル上限			*/
+};
+
 /* Exported constants --------------------------------------------------------*/
+#define ADC_FAILURE_VALUE		(0xFFFF)	/* ADCフェール値				*/
+#define UART_RX_BLOCK_SIZE		(4)			/* UART受信ブロックサイズ		*/
 
 /* Exported macro ------------------------------------------------------------*/
+extern ADC_HandleTypeDef hadc1;
+extern UART_HandleTypeDef huart2;
 
 /* Exported functions prototypes ---------------------------------------------*/
 
@@ -23,10 +42,14 @@
 extern void taskAdcDriverInit(void);										/* ADCドライバー初期化処理				*/
 extern void taskAdcDriverInput(void);										/* ADCドライバー入力処理				*/
 extern void taskAdcDriverOutput(void);										/* ADCドライバー出力処理				*/
+extern uint16_t adcGetData(uint16_t u16_Channel);							/* ADCデータを取得する					*/
 
 /* drv_uart.c */
 extern void taskUartDriverInit(void);										/* UARTドライバー初期化処理				*/
 extern void taskUartDriverInput(void);										/* UARTドライバー入力処理				*/
 extern void taskUartDriverOutput(void);										/* UARTドライバー出力処理				*/
+extern uint16_t uartSetTxData(const uint8_t *pu8_Data, uint16_t u16_Size);	/* UART送信データを登録する				*/
+extern uint16_t uartGetRxData(uint8_t *pu8_Data, uint16_t u16_Size);		/* UART受信データを取得する				*/
+extern uint16_t uartGetRxCount(void);										/* UART受信データの数を取得する			*/
 
 #endif /* __DRV_H */
