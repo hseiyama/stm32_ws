@@ -55,6 +55,8 @@ defined in linker script */
  * @retval : None
 */
 
+/* リセット起動後、MSIをシステムクロックとして使用(MSIは4MHzで設定) */
+
 /* アセンブラ記述開始(定義) */
 	.equ	DATA_INIT, 0x12345678	// データ初期値
 	.equ	RCC_AHB2ENR, (0x40021000 + 0x4C)	// AHB2 ペリフェラルクロック有効レジスタ

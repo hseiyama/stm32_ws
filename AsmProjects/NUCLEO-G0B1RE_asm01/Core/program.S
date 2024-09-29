@@ -5,7 +5,7 @@
 
 .include "stm32g0b1.inc"
 
-TimerValue=6000000
+TimerValue=6000000						@ HSISYS is used (HSI16 16 MHz frequency)
 
 .data
 Variables:
