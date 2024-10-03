@@ -83,9 +83,17 @@ void loop(void)
 		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"rst0", UART_RX_BLOCK_SIZE) == 0) {
 			NVIC_SystemReset();
 		}
+		/* PWMのDuty値を設定する */
+		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"pwm", 3) == 0) {
+			if ((u8s_RxBuffer[3] >= '0') && (u8s_RxBuffer[3] <= '9')) {
+				pwmSetDuty(PWM_CHANNEL_TIM3_CH1, (u8s_RxBuffer[3] - '0') * 100);
+			}
+			else if (u8s_RxBuffer[3] == 'a') {
+				pwmSetDuty(PWM_CHANNEL_TIM3_CH1, PWM_PERIOD);
+			}
+		}
 	}
 
-	/* ADCデータを取得する */
 	for (u16_Index = 0; u16_Index < ADC_CHANNEL_MAX; u16_Index++) {
 		/* ADCデータを取得する */
 		u16s_AdcData[u16_Index] = adcGetData(u16_Index);

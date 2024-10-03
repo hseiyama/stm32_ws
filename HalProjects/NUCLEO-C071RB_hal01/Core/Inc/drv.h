@@ -22,10 +22,16 @@ typedef struct _QueueControl {
 
 /* ADCチャネル情報 */
 enum AdcChannelInfo {
-	ADC_CHANNEL_IN0 = 0,			/* ADCのチャネルIN0				*/
-	ADC_CHANNEL_IN1,				/* ADCのチャネルIN1				*/
-	ADC_CHANNEL_IN4,				/* ADCのチャネルIN4				*/
-	ADC_CHANNEL_MAX					/* ADCのチャネル上限			*/
+	ADC_CHANNEL_ADC1_IN0 = 0,		/* ADCのチャネルADC1_IN0				*/
+	ADC_CHANNEL_ADC1_IN1,			/* ADCのチャネルADC1_IN1				*/
+	ADC_CHANNEL_ADC1_IN4,			/* ADCのチャネルADC1_IN4				*/
+	ADC_CHANNEL_MAX					/* ADCのチャネル上限					*/
+};
+
+/* PWMチャネル情報 */
+enum PwmChannelInfo {
+	PWM_CHANNEL_TIM3_CH1 = 0,		/* PWMのチャネルTIM3_CH1				*/
+	PWM_CHANNEL_MAX					/* PWMのチャネル上限					*/
 };
 
 /* Exported constants --------------------------------------------------------*/
@@ -35,6 +41,7 @@ enum AdcChannelInfo {
 /* Exported macro ------------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
 extern UART_HandleTypeDef huart2;
+extern TIM_HandleTypeDef htim3;
 
 /* Exported functions prototypes ---------------------------------------------*/
 
@@ -55,5 +62,11 @@ extern void uartEchoHex8(uint8_t u8_Data);									/* Hex1Byte表示処理						
 extern void uartEchoHex16(uint16_t u16_Data);								/* Hex2Byte表示処理						*/
 extern void uartEchoHex32(uint32_t u32_Data);								/* Hex4Byte表示処理						*/
 extern void uartEchoStr(const char *ps8_Data);								/* 文字列表示処理						*/
+
+/* drv_pwm.c */
+extern void taskPwmDriverInit(void);										/* PWMドライバー初期化処理				*/
+extern void taskPwmDriverInput(void);										/* PWMドライバー入力処理				*/
+extern void taskPwmDriverOutput(void);										/* PWMドライバー出力処理				*/
+extern uint8_t pwmSetDuty(uint16_t u16_Channel, uint16_t u16_Duty);			/* PWMのDuty値を設定する				*/
 
 #endif /* __DRV_H */
