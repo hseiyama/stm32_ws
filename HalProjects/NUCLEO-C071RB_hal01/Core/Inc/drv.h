@@ -69,4 +69,9 @@ extern void taskPwmDriverInput(void);										/* PWMドライバー入力処理
 extern void taskPwmDriverOutput(void);										/* PWMドライバー出力処理				*/
 extern uint8_t pwmSetDuty(uint16_t u16_Channel, uint16_t u16_Duty);			/* PWMのDuty値を設定する				*/
 
+/* drv_flash.c */
+extern void taskFlashDriverInit(void);										/* FLASHドライバー初期化処理			*/
+extern void taskFlashDriverInput(void);										/* FLASHドライバー入力処理				*/
+extern void taskFlashDriverOutput(void);									/* FLASHドライバー出力処理				*/
+
 #endif /* __DRV_H */

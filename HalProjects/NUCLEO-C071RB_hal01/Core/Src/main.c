@@ -62,6 +62,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_TIM14_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_FLASH_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -121,6 +122,7 @@ int main(void)
   MX_TIM14_Init();
   MX_ADC1_Init();
   MX_TIM3_Init();
+  MX_FLASH_Init();
   /* USER CODE BEGIN 2 */
 	/* ADCドライバー初期化処理 */
 	taskAdcDriverInit();
@@ -128,6 +130,8 @@ int main(void)
 	taskUartDriverInit();
 	/* PWMドライバー初期化処理 */
 	taskPwmDriverInit();
+	/* FLASHドライバー初期化処理 */
+	taskFlashDriverInit();
 	/* 初期化関数 */
 	setup();
 
@@ -160,6 +164,8 @@ int main(void)
 			taskUartDriverInput();
 			/* PWMドライバー入力処理 */
 			taskPwmDriverInput();
+			/* FLASHドライバー入力処理 */
+			taskFlashDriverInput();
 			/* 周期処理関数 */
 			loop();
 			/* ADCドライバー出力処理 */
@@ -168,6 +174,8 @@ int main(void)
 			taskUartDriverOutput();
 			/* PWMドライバー出力処理 */
 			taskPwmDriverOutput();
+			/* FLASHドライバー出力処理 */
+			taskFlashDriverOutput();
 		}
 	}
   /* USER CODE END 3 */
@@ -298,6 +306,35 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief FLASH Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_FLASH_Init(void)
+{
+
+  /* USER CODE BEGIN FLASH_Init 0 */
+
+  /* USER CODE END FLASH_Init 0 */
+
+  /* USER CODE BEGIN FLASH_Init 1 */
+
+  /* USER CODE END FLASH_Init 1 */
+  if (HAL_FLASH_Unlock() != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_FLASH_Lock() != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN FLASH_Init 2 */
+
+  /* USER CODE END FLASH_Init 2 */
 
 }
 
