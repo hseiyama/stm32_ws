@@ -15,8 +15,8 @@
 
 /* タイマー情報 */
 typedef struct _Timer {
-	uint32_t u32_time;
-	bool bl_state;
+	uint32_t u32_time;				/* タイマー開始時間						*/
+	bool bl_state;					/* タイマー動作状態						*/
 } Timer;
 
 /* Exported constants --------------------------------------------------------*/

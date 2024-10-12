@@ -37,6 +37,10 @@ enum PwmChannelInfo {
 /* Exported constants --------------------------------------------------------*/
 #define ADC_FAILURE_VALUE		(0xFFFF)	/* ADCフェール値				*/
 #define UART_RX_BLOCK_SIZE		(4)			/* UART受信ブロックサイズ		*/
+#define FLASH_BLOCK_SIZE		(64)		/* FLASHブロックサイズ			*/
+#define FLASH_MARK_SIZE			(4)			/* FLASHマークサイズ			*/
+#define FLASH_DATA_SIZE			(FLASH_BLOCK_SIZE - FLASH_MARK_SIZE)
+											/* FLASHデータサイズ			*/
 
 /* Exported macro ------------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
@@ -73,5 +77,11 @@ extern uint8_t pwmSetDuty(uint16_t u16_Channel, uint16_t u16_Duty);			/* PWMのD
 extern void taskFlashDriverInit(void);										/* FLASHドライバー初期化処理			*/
 extern void taskFlashDriverInput(void);										/* FLASHドライバー入力処理				*/
 extern void taskFlashDriverOutput(void);									/* FLASHドライバー出力処理				*/
+extern uint16_t flashGetData(uint8_t *pu8_Data, uint16_t u16_Size);			/* FLASHデータを取得する				*/
+extern uint16_t flashSetData(uint8_t *pu8_Data, uint16_t u16_Size);			/* FLASHデータを更新する				*/
+extern void flashReadData(void);											/* FLASHデータを読み出す				*/
+extern void flashWriteDataRequest(void);									/* FLASHデータの書き込みを要求する		*/
+extern uint8_t flashGetReadResult(void);									/* FLASH読み出し結果を取得する			*/
+extern uint8_t flashGetWriteResult(void);									/* FLASH書き込み結果を取得する			*/
 
 #endif /* __DRV_H */
