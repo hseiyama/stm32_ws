@@ -51,6 +51,13 @@ typedef struct _FlashBlockAddress {
 #define MARK_ON					(0xCC55CC55)				/* マークON							*/
 
 /* Private macro -------------------------------------------------------------*/
+#ifdef DEBUG
+#define DBG_VALUE32(a, b)		{uartEchoStr(a); uartEchoHex32(b); uartEchoStr("\r\n");}
+#define DBG_MESSAGE(a)			{uartEchoStr(a); uartEchoStr("\r\n");}
+#else
+#define DBG_VALUE32(a, b)
+#define DBG_MESSAGE(a)
+#endif
 
 /* Private variables ---------------------------------------------------------*/
 
@@ -192,9 +199,7 @@ void flashReadData(void)
 
 	/* FLASH読み出しアドレスの取得が成功した場合 */
 	if (getReadDataAddr(&st_FlashBlockAddr) == OK) {
-/**/	uartEchoStr("ReadAddr = ");
-/**/	uartEchoHex32(st_FlashBlockAddr.u32_start);
-/**/	uartEchoStr("\r\n");
+		DBG_VALUE32("ReadAddr = ", st_FlashBlockAddr.u32_start);				/* DEBUG */
 		mem_cpy32((uint32_t *)&u8s_FlashDataBuffer[0], (uint32_t *)st_FlashBlockAddr.u32_start, FLASH_BLOCK_SIZE / 4);
 		u8s_FlashReadResult = FLASH_RESULT_OK;
 	}
@@ -323,9 +328,7 @@ static void updateFlashState(void)
 			if (getWriteDataAddr(&sts_FlashBlockAddr) == OK) {
 				u8s_FlashState = FLASH_STATE_WRITE;
 				u8s_FlashWriteResult = FLASH_RESULT_BUSY;
-/**/			uartEchoStr("WriteAddr = ");
-/**/			uartEchoHex32(sts_FlashBlockAddr.u32_start);
-/**/			uartEchoStr("\r\n");
+				DBG_VALUE32("WriteAddr = ", sts_FlashBlockAddr.u32_start);		/* DEBUG */
 				/* FLASH書き込みの準備 */
 				u32s_FlashWriteAddr = sts_FlashBlockAddr.u32_start;
 				mem_set32((uint32_t *)&u8s_FlashDataBuffer[DATA_MARK_OFFSET], MARK_ON, 1);
@@ -378,7 +381,7 @@ static void updateFlashState(void)
 				HAL_FLASH_Lock();
 				u8s_FlashState = FLASH_STATE_IDLE;
 				u8s_FlashWriteResult = FLASH_RESULT_OK;
-/**/			uartEchoStr("Flash Write OK!\r\n");
+				DBG_MESSAGE("Flash Write OK!");									/* DEBUG */
 			}
 		}
 		else if (u8s_FlashIrqError == ON) {
@@ -387,22 +390,20 @@ static void updateFlashState(void)
 			HAL_FLASH_Lock();
 			u8s_FlashState = FLASH_STATE_IDLE;
 			u8s_FlashWriteResult = FLASH_RESULT_NG;
-/**/		uartEchoStr("Flash Write NG!\r\n");
+			DBG_MESSAGE("Flash Write NG!");										/* DEBUG */
 		}
 		break;
 	/* 消去中 */
 	case FLASH_STATE_ERASE:
 		if (u8s_FlashIrqEnd == ON) {
 			u8s_FlashIrqEnd = OFF;
-/**/		uartEchoStr("Flash Clear OK!\r\n");
+			DBG_MESSAGE("Flash Clear OK!");										/* DEBUG */
 			/* FLASH状態を「消去中→書き込み中」に移行する */
 			u8s_FlashState = FLASH_STATE_WRITE;
 			/* FLASH書き込みの準備 */
 			sts_FlashBlockAddr.u32_start = DATA_START_ADDR;
 			sts_FlashBlockAddr.u32_end = DATA_START_ADDR + FLASH_BLOCK_SIZE - 1;
-/**/		uartEchoStr("WriteAddr = ");
-/**/		uartEchoHex32(sts_FlashBlockAddr.u32_start);
-/**/		uartEchoStr("\r\n");
+			DBG_VALUE32("WriteAddr = ", sts_FlashBlockAddr.u32_start);			/* DEBUG */
 			u32s_FlashWriteAddr = sts_FlashBlockAddr.u32_start;
 			mem_set32((uint32_t *)&u8s_FlashDataBuffer[DATA_MARK_OFFSET], MARK_ON, 1);
 			pu64s_FlashData = (uint64_t *)&u8s_FlashDataBuffer[0];
@@ -422,7 +423,7 @@ static void updateFlashState(void)
 			HAL_FLASH_Lock();
 			u8s_FlashState = FLASH_STATE_IDLE;
 			u8s_FlashWriteResult = FLASH_RESULT_NG;
-/**/		uartEchoStr("Flash Clear NG!\r\n");
+			DBG_MESSAGE("Flash Clear NG!");										/* DEBUG */
 		}
 		break;
 	/* 上記以外 */

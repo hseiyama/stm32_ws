@@ -214,8 +214,11 @@ static void getFlashData(void)
   */
 static void setFlashData(void)
 {
+	uint16_t *pu16_Data;
+
 	/* PWMデューティ値 */
-	*(uint16_t *)&u8s_FlashDataBuffer[0] = u16s_PwmDutyValue;
+	pu16_Data = (uint16_t *)&u8s_FlashDataBuffer[0];
+	*pu16_Data = u16s_PwmDutyValue;
 	/* メッセージデータ */
 	mem_cpy08(&u8s_FlashDataBuffer[2], &u8s_MessageDate[0], MESSAGE_SIZE);
 
