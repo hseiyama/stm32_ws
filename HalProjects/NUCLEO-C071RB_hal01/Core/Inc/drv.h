@@ -66,6 +66,7 @@ extern void uartEchoHex8(uint8_t u8_Data);									/* Hex1Byte表示処理						
 extern void uartEchoHex16(uint16_t u16_Data);								/* Hex2Byte表示処理						*/
 extern void uartEchoHex32(uint32_t u32_Data);								/* Hex4Byte表示処理						*/
 extern void uartEchoStr(const char *ps8_Data);								/* 文字列表示処理						*/
+extern void uartEchoStrln(const char *ps8_Data);							/* 文字列表示処理(改行付き)				*/
 
 /* drv_pwm.c */
 extern void taskPwmDriverInit(void);										/* PWMドライバー初期化処理				*/

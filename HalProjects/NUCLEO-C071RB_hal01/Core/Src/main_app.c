@@ -28,15 +28,28 @@ static uint8_t u8s_AdcDispState;							/* ADC表示状態				*/
 static uint8_t u8s_FlashDataBuffer[FLASH_DATA_SIZE];		/* FLASHデータバッファ		*/
 static uint16_t u16s_PwmDutyValue;							/* PWMデューティ値			*/
 static uint16_t u16s_PwmDutyValue_prev;						/* PWMデューティ値(前回値)	*/
-static uint8_t u8s_MessageDate[MESSAGE_SIZE + 3];			/* メッセージデータ			*/
+static uint8_t u8s_MessageData[MESSAGE_SIZE + 1];			/* メッセージデータ			*/
 static uint16_t u16s_MessageCount;							/* メッセージカウント		*/
 static uint8_t u8s_MessageUpdate;							/* メッセージ更新フラグ		*/
+volatile static uint8_t u8s_Exti0Falling;					/* 外部割込み0発生フラグ	*/
 
 /* Private function prototypes -----------------------------------------------*/
 static void getFlashData(void);								/* FLASHデータを取得する				*/
 static void setFlashData(void);								/* FLASHデータを更新する				*/
 
 /* Exported functions --------------------------------------------------------*/
+
+/**
+  * @brief  EXTI line detection callback.
+  * @param  GPIO_Pin Specifies the port pin connected to corresponding EXTI line.
+  * @retval None
+  */
+void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
+{
+	if (GPIO_Pin == GPIO_PIN_0) {
+		u8s_Exti0Falling = ON;
+	}
+}
 
 /**
   * @brief 初期化関数
@@ -49,19 +62,17 @@ void setup(void)
 	mem_set08(&u8s_RxBuffer[0], 0x00, UART_BUFF_SIZE);
 	mem_set16(&u16s_AdcData[0], ADC_FAILURE_VALUE, ADC_CHANNEL_MAX);
 	mem_set08(&u8s_FlashDataBuffer[0], 0x00, FLASH_DATA_SIZE);
-	mem_set08(&u8s_MessageDate[0], 0x00, sizeof(u8s_MessageDate));
+	mem_set08(&u8s_MessageData[0], 0x00, sizeof(u8s_MessageData));
 	u8s_AdcDispState = ON;
 	u16s_PwmDutyValue = 0;
 	u16s_PwmDutyValue_prev = 0;
 	u16s_MessageCount = 0;
 	u8s_MessageUpdate = OFF;
+	u8s_Exti0Falling = OFF;
 
 	/* UART送信バッファに改行コードをセット */
 	u8s_TxBuffer[UART_RX_BLOCK_SIZE] = '\r';			/* CRコード					*/
 	u8s_TxBuffer[UART_RX_BLOCK_SIZE + 1] = '\n';		/* LFコード					*/
-	/* メッセージデータに改行コードをセット */
-	u8s_MessageDate[MESSAGE_SIZE] = '\r';				/* CRコード					*/
-	u8s_MessageDate[MESSAGE_SIZE + 1] = '\n';			/* LFコード					*/
 
 	/* FLASHデータを取得する */
 	getFlashData();
@@ -70,9 +81,9 @@ void setup(void)
 	startTimer(&sts_Timer1s);
 
 	/* プログラム開始メッセージを表示する */
-	uartEchoStr("Start ADC/UART sample!!\r\n");
+	uartEchoStrln("Start ADC/UART sample!!");
 	/* メッセージデータを表示する */
-	uartEchoStr((char *)&u8s_MessageDate[0]);
+	uartEchoStrln((char *)&u8s_MessageData[0]);
 }
 
 /**
@@ -97,7 +108,7 @@ void loop(void)
 		/* メッセージ更新フラグがONの場合 */
 		if (u8s_MessageUpdate == ON) {
 			if (u16s_MessageCount < MESSAGE_SIZE) {
-				mem_cpy08(&u8s_MessageDate[u16s_MessageCount], &u8s_RxBuffer[0], u16_RxSize);
+				mem_cpy08(&u8s_MessageData[u16s_MessageCount], &u8s_RxBuffer[0], u16_RxSize);
 				u16s_MessageCount += u16_RxSize;
 			}
 			if (u16s_MessageCount >= MESSAGE_SIZE) {
@@ -128,7 +139,7 @@ void loop(void)
 		}
 		/* メッセージデータを表示する */
 		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"msgr", UART_RX_BLOCK_SIZE) == 0) {
-			uartEchoStr((char *)&u8s_MessageDate[0]);
+			uartEchoStrln((char *)&u8s_MessageData[0]);
 		}
 		/* メッセージデータを更新する */
 		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"msgw", UART_RX_BLOCK_SIZE) == 0) {
@@ -164,7 +175,7 @@ void loop(void)
 				uartEchoStr(" ");
 				uartEchoHex16(u16s_AdcData[u16_Index]);
 			}
-			uartEchoStr("\r\n");
+			uartEchoStrln("");
 		}
 
 		/* タイマーを再開する */
@@ -183,6 +194,10 @@ void loop(void)
 		pwmSetDuty(PWM_CHANNEL_TIM3_CH1, u16s_PwmDutyValue);
 	}
 
+	if (u8s_Exti0Falling == ON) {
+		uartEchoStrln("Exti0Falling!");
+		u8s_Exti0Falling = OFF;
+	}
 	/* 前回値を更新 */
 	u16s_PwmDutyValue_prev = u16s_PwmDutyValue;
 }
@@ -204,7 +219,7 @@ static void getFlashData(void)
 	/* PWMデューティ値 */
 	u16s_PwmDutyValue = *(uint16_t *)&u8s_FlashDataBuffer[0];
 	/* メッセージデータ */
-	mem_cpy08(&u8s_MessageDate[0], &u8s_FlashDataBuffer[2], MESSAGE_SIZE);
+	mem_cpy08(&u8s_MessageData[0], &u8s_FlashDataBuffer[2], MESSAGE_SIZE);
 }
 
 /**
@@ -220,7 +235,7 @@ static void setFlashData(void)
 	pu16_Data = (uint16_t *)&u8s_FlashDataBuffer[0];
 	*pu16_Data = u16s_PwmDutyValue;
 	/* メッセージデータ */
-	mem_cpy08(&u8s_FlashDataBuffer[2], &u8s_MessageDate[0], MESSAGE_SIZE);
+	mem_cpy08(&u8s_FlashDataBuffer[2], &u8s_MessageData[0], MESSAGE_SIZE);
 
 	/* FLASHデータを更新する */
 	flashSetData(&u8s_FlashDataBuffer[0], FLASH_DATA_SIZE);

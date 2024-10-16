@@ -55,8 +55,8 @@ typedef struct _FlashBlockAddress {
 
 /* デバッグ用マクロ */
 #if DEBUG_FLASH == ON
-#define DBG_VALUE32(a, b)		{uartEchoStr(a); uartEchoHex32(b); uartEchoStr("\r\n");}
-#define DBG_MESSAGE(a)			{uartEchoStr(a); uartEchoStr("\r\n");}
+#define DBG_VALUE32(a, b)		{uartEchoStr(a); uartEchoHex32(b); uartEchoStrln("");}
+#define DBG_MESSAGE(a)			uartEchoStrln(a)
 #else
 #define DBG_VALUE32(a, b)
 #define DBG_MESSAGE(a)

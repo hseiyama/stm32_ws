@@ -212,6 +212,16 @@ void uartEchoStr(const char *ps8_Data) {
 	}
 }
 
+/**
+  * @brief 文字列表示処理(改行付き)
+  * @param pu8_Data データのポインタ
+  * @retval None
+  */
+void uartEchoStrln(const char *ps8_Data) {
+	uartEchoStr(ps8_Data);
+	uartEchoStr("\r\n");
+}
+
 /* Private functions ---------------------------------------------------------*/
 
 /**
