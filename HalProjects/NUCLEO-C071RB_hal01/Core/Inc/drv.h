@@ -46,6 +46,7 @@ enum PwmChannelInfo {
 extern ADC_HandleTypeDef hadc1;
 extern UART_HandleTypeDef huart2;
 extern TIM_HandleTypeDef htim3;
+extern I2C_HandleTypeDef hi2c1;
 
 /* Exported functions prototypes ---------------------------------------------*/
 
@@ -84,5 +85,10 @@ extern void flashReadData(void);											/* FLASHデータを読み出す				*
 extern void flashWriteDataRequest(void);									/* FLASHデータの書き込みを要求する		*/
 extern uint8_t flashGetReadResult(void);									/* FLASH読み出し結果を取得する			*/
 extern uint8_t flashGetWriteResult(void);									/* FLASH書き込み結果を取得する			*/
+
+/* drv_i2c.c */
+extern void taskI2cDriverInit(void);										/* I2Cドライバー初期化処理				*/
+extern void taskI2cDriverInput(void);										/* I2Cドライバー入力処理				*/
+extern void taskI2cDriverOutput(void);										/* I2Cドライバー出力処理				*/
 
 #endif /* __DRV_H */
