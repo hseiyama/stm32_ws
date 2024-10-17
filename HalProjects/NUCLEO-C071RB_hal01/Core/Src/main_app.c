@@ -31,7 +31,7 @@ static uint16_t u16s_PwmDutyValue_prev;						/* PWMデューティ値(前回値)
 static uint8_t u8s_MessageData[MESSAGE_SIZE + 1];			/* メッセージデータ			*/
 static uint16_t u16s_MessageCount;							/* メッセージカウント		*/
 static uint8_t u8s_MessageUpdate;							/* メッセージ更新フラグ		*/
-volatile static uint8_t u8s_Exti0Falling;					/* 外部割込み0発生フラグ	*/
+volatile static uint8_t u8s_Exti0Event;						/* 外部割込み0発生フラグ	*/
 
 /* Private function prototypes -----------------------------------------------*/
 static void getFlashData(void);								/* FLASHデータを取得する				*/
@@ -47,7 +47,7 @@ static void setFlashData(void);								/* FLASHデータを更新する				*/
 void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
 {
 	if (GPIO_Pin == GPIO_PIN_0) {
-		u8s_Exti0Falling = ON;
+		u8s_Exti0Event = ON;
 	}
 }
 
@@ -68,7 +68,7 @@ void setup(void)
 	u16s_PwmDutyValue_prev = 0;
 	u16s_MessageCount = 0;
 	u8s_MessageUpdate = OFF;
-	u8s_Exti0Falling = OFF;
+	u8s_Exti0Event = OFF;
 
 	/* UART送信バッファに改行コードをセット */
 	u8s_TxBuffer[UART_RX_BLOCK_SIZE] = '\r';			/* CRコード					*/
@@ -194,10 +194,11 @@ void loop(void)
 		pwmSetDuty(PWM_CHANNEL_TIM3_CH1, u16s_PwmDutyValue);
 	}
 
-	if (u8s_Exti0Falling == ON) {
+	if (u8s_Exti0Event == ON) {
 		uartEchoStrln("Exti0Falling!");
-		u8s_Exti0Falling = OFF;
+		u8s_Exti0Event = OFF;
 	}
+
 	/* 前回値を更新 */
 	u16s_PwmDutyValue_prev = u16s_PwmDutyValue;
 }
