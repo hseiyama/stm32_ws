@@ -14,6 +14,7 @@
 
 /* Private define ------------------------------------------------------------*/
 #define TIME_1S				(1000)					/* 1秒判定時間[ms]			*/
+#define TIME_SLEEP_WAIT		(1000)					/* スリープ待ち時間[ms]		*/
 #define UART_BUFF_SIZE		(8)						/* UARTバッファサイズ		*/
 #define MESSAGE_SIZE		(8)						/* メッセージサイズ		*/
 
@@ -21,6 +22,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 static Timer sts_Timer1s;									/* 1秒タイマー				*/
+static Timer sts_TimerSleepWait;							/* スリープ待ちタイマー		*/
 static uint8_t u8s_TxBuffer[UART_BUFF_SIZE];				/* UART送信バッファ			*/
 static uint8_t u8s_RxBuffer[UART_BUFF_SIZE];				/* UART受信バッファ			*/
 static uint16_t u16s_AdcData[ADC_CHANNEL_MAX];				/* ADCデータ(全チャネル)	*/
@@ -79,6 +81,8 @@ void setup(void)
 
 	/* タイマーを開始する */
 	startTimer(&sts_Timer1s);
+	/* タイマーを停止する */
+	stopTimer(&sts_TimerSleepWait);
 
 	/* プログラム開始メッセージを表示する */
 	uartEchoStrln("Start ADC/UART sample!!");
@@ -154,6 +158,14 @@ void loop(void)
 		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"nvmw", UART_RX_BLOCK_SIZE) == 0) {
 			setFlashData();
 		}
+		/* スリープ移行の要求 */
+		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"slp0", UART_RX_BLOCK_SIZE) == 0) {
+			uartEchoStrln("GotoSleep!");
+			/* タイマーを停止する */
+			stopTimer(&sts_Timer1s);
+			/* タイマーを開始する */
+			startTimer(&sts_TimerSleepWait);
+		}
 	}
 
 	for (u16_Index = 0; u16_Index < ADC_CHANNEL_MAX; u16_Index++) {
@@ -201,6 +213,19 @@ void loop(void)
 
 	/* 前回値を更新 */
 	u16s_PwmDutyValue_prev = u16s_PwmDutyValue;
+
+	/* スリープ待ち時間が満了した場合 */
+	if (checkTimer(&sts_TimerSleepWait, TIME_SLEEP_WAIT)) {
+		/* タイマーを停止する */
+		stopTimer(&sts_TimerSleepWait);
+
+		/* スリープ移行関数 */
+		sleep();
+
+		uartEchoStrln("Wakeup!");
+		/* タイマーを開始する */
+		startTimer(&sts_Timer1s);
+	}
 }
 
 /* Private functions ---------------------------------------------------------*/

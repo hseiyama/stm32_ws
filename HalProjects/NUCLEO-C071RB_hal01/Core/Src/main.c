@@ -85,6 +85,33 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	}
 }
 
+/**
+  * @brief スリープ移行関数
+  * @param None
+  * @retval None
+  */
+void sleep(void)
+{
+	/* TIM14のタイマー停止(1msタイマー割り込み用) */
+	if (HAL_TIM_Base_Stop_IT(&htim14) != HAL_OK) {
+		/* Stopping Error */
+		Error_Handler();
+	}
+
+ 	/* SysTickを一時中断 */
+	HAL_SuspendTick();
+	/* スリープモードへ移行 */
+	HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
+ 	/* SysTickを再開 */
+	HAL_ResumeTick();
+
+	/* TIM14のタイマー開始(1msタイマー割り込み用) */
+	if (HAL_TIM_Base_Start_IT(&htim14) != HAL_OK) {
+		/* Starting Error */
+		Error_Handler();
+	}
+}
+
 /* USER CODE END 0 */
 
 /**
