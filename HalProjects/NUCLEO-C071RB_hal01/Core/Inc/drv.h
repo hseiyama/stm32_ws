@@ -34,6 +34,13 @@ enum PwmChannelInfo {
 	PWM_CHANNEL_MAX					/* PWMのチャネル上限					*/
 };
 
+/* I2Cレジスタ情報 */
+enum I2cRegisterInfo {
+	I2C_REGISTER_PORTA = 0,			/* I2CレジスタPORTA(入力用)				*/
+	I2C_REGISTER_PORTB,				/* I2CレジスタPORTA(出力用)				*/
+	I2C_REGISTER_MAX				/* I2Cレジスタの上限					*/
+};
+
 /* Exported constants --------------------------------------------------------*/
 #define ADC_FAILURE_VALUE		(0xFFFF)	/* ADCフェール値				*/
 #define UART_RX_BLOCK_SIZE		(4)			/* UART受信ブロックサイズ		*/
@@ -90,5 +97,9 @@ extern uint8_t flashGetWriteResult(void);									/* FLASH書き込み結果を�
 extern void taskI2cDriverInit(void);										/* I2Cドライバー初期化処理				*/
 extern void taskI2cDriverInput(void);										/* I2Cドライバー入力処理				*/
 extern void taskI2cDriverOutput(void);										/* I2Cドライバー出力処理				*/
+extern void i2cComEnable(void);												/* I2C通信を有効化						*/
+extern void i2cComDisable(void);											/* I2C通信を無効化						*/
+extern uint8_t i2cGetData(uint16_t u16_Register, uint8_t *pu8_Data);		/* I2Cデータを取得する					*/
+extern uint8_t i2cSetData(uint16_t u16_Register, uint8_t u8_Data);			/* I2Cデータを登録する					*/
 
 #endif /* __DRV_H */

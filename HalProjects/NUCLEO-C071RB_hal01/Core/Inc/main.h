@@ -77,7 +77,7 @@ void Error_Handler(void);
 /* USER CODE BEGIN EFP */
 
 /* main.c */
-extern void sleep(void);			/* スリープ移行関数				*/
+extern void sleep(void);			/* スリープへ移行する			*/
 
 /* main_app.c */
 extern void setup(void);			/* 初期化関数					*/

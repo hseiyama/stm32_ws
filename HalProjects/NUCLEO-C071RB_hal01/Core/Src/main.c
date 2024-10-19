@@ -86,7 +86,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 }
 
 /**
-  * @brief スリープ移行関数
+  * @brief スリープへ移行する
   * @param None
   * @retval None
   */

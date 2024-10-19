@@ -26,7 +26,7 @@ static Timer sts_TimerSleepWait;							/* スリープ待ちタイマー		*/
 static uint8_t u8s_TxBuffer[UART_BUFF_SIZE];				/* UART送信バッファ			*/
 static uint8_t u8s_RxBuffer[UART_BUFF_SIZE];				/* UART受信バッファ			*/
 static uint16_t u16s_AdcData[ADC_CHANNEL_MAX];				/* ADCデータ(全チャネル)	*/
-static uint8_t u8s_AdcDispState;							/* ADC表示状態				*/
+static uint8_t u8s_DisplayState;							/* 表示状態					*/
 static uint8_t u8s_FlashDataBuffer[FLASH_DATA_SIZE];		/* FLASHデータバッファ		*/
 static uint16_t u16s_PwmDutyValue;							/* PWMデューティ値			*/
 static uint16_t u16s_PwmDutyValue_prev;						/* PWMデューティ値(前回値)	*/
@@ -65,7 +65,7 @@ void setup(void)
 	mem_set16(&u16s_AdcData[0], ADC_FAILURE_VALUE, ADC_CHANNEL_MAX);
 	mem_set08(&u8s_FlashDataBuffer[0], 0x00, FLASH_DATA_SIZE);
 	mem_set08(&u8s_MessageData[0], 0x00, sizeof(u8s_MessageData));
-	u8s_AdcDispState = ON;
+	u8s_DisplayState = ON;
 	u16s_PwmDutyValue = 0;
 	u16s_PwmDutyValue_prev = 0;
 	u16s_MessageCount = 0;
@@ -99,6 +99,7 @@ void loop(void)
 {
 	uint16_t u16_Index;
 	uint16_t u16_RxSize;
+	uint8_t u8_I2cData;
 
 	/* UART受信データの数を取得する */
 	if (uartGetRxCount() >= UART_RX_BLOCK_SIZE) {
@@ -120,13 +121,13 @@ void loop(void)
 				u8s_MessageUpdate = OFF;
 			}
 		}
-		/* ADC表示状態の切替え(OFF) */
-		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"adc0", UART_RX_BLOCK_SIZE) == 0) {
-			u8s_AdcDispState = OFF;
+		/* 表示状態の切替え(OFF) */
+		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"dsp0", UART_RX_BLOCK_SIZE) == 0) {
+			u8s_DisplayState = OFF;
 		}
-		/* ADC表示状態の切替え(ON) */
-		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"adc1", UART_RX_BLOCK_SIZE) == 0) {
-			u8s_AdcDispState = ON;
+		/* 表示状態の切替え(ON) */
+		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"dsp1", UART_RX_BLOCK_SIZE) == 0) {
+			u8s_DisplayState = ON;
 		}
 		/* システムリセットの要求 */
 		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"rst0", UART_RX_BLOCK_SIZE) == 0) {
@@ -163,6 +164,8 @@ void loop(void)
 			uartEchoStrln("GotoSleep!");
 			/* タイマーを停止する */
 			stopTimer(&sts_Timer1s);
+			/* I2C通信を無効化 */
+			i2cComDisable();
 			/* タイマーを開始する */
 			startTimer(&sts_TimerSleepWait);
 		}
@@ -173,20 +176,29 @@ void loop(void)
 		u16s_AdcData[u16_Index] = adcGetData(u16_Index);
 	}
 
+	/* I2Cデータを取得する */
+	if (i2cGetData(I2C_REGISTER_PORTA, &u8_I2cData) == OK) {
+		/* I2Cデータを登録する */
+		i2cSetData(I2C_REGISTER_PORTB, u8_I2cData);
+	}
+
 	/* 1秒判定時間が満了した場合 */
 	if (checkTimer(&sts_Timer1s, TIME_1S)) {
 		/* LEDを反転出力する */
 		HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
 		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
-		/* ADC表示状態がONの場合 */
-		if (u8s_AdcDispState == ON) {
+		/* 表示状態がONの場合 */
+		if (u8s_DisplayState == ON) {
 			/* ADCデータを表示する */
 			uartEchoStr("ADC =");
 			for (u16_Index = 0; u16_Index < ADC_CHANNEL_MAX; u16_Index++) {
 				uartEchoStr(" ");
 				uartEchoHex16(u16s_AdcData[u16_Index]);
 			}
+			/* I2Cデータを表示する */
+			uartEchoStr(", I2C = ");
+			uartEchoHex8(u8_I2cData);
 			uartEchoStrln("");
 		}
 
@@ -219,12 +231,14 @@ void loop(void)
 		/* タイマーを停止する */
 		stopTimer(&sts_TimerSleepWait);
 
-		/* スリープ移行関数 */
+		/* スリープへ移行する */
 		sleep();
 
 		uartEchoStrln("Wakeup!");
 		/* タイマーを開始する */
 		startTimer(&sts_Timer1s);
+		/* I2C通信を有効化 */
+		i2cComEnable();
 	}
 }
 
