@@ -100,6 +100,7 @@ void loop(void)
 	uint16_t u16_Index;
 	uint16_t u16_RxSize;
 	uint8_t u8_I2cData;
+	uint8_t u8_SpiData;
 
 	/* UART受信データの数を取得する */
 	if (uartGetRxCount() >= UART_RX_BLOCK_SIZE) {
@@ -166,6 +167,8 @@ void loop(void)
 			stopTimer(&sts_Timer1s);
 			/* I2C通信を無効化 */
 			i2cComDisable();
+			/* SPI通信を無効化 */
+			spiComDisable();
 			/* タイマーを開始する */
 			startTimer(&sts_TimerSleepWait);
 		}
@@ -182,10 +185,16 @@ void loop(void)
 		i2cSetData(I2C_REGISTER_PORTB, u8_I2cData);
 	}
 
+	/* SPIデータを取得する */
+	if (spiGetData(SPI_REGISTER_PORTA, &u8_SpiData) == OK) {
+		/* SPIデータを登録する */
+		spiSetData(SPI_REGISTER_PORTB, u8_SpiData);
+	}
+
 	/* 1秒判定時間が満了した場合 */
 	if (checkTimer(&sts_Timer1s, TIME_1S)) {
 		/* LEDを反転出力する */
-		HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+//		HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
 		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
 		/* 表示状態がONの場合 */
@@ -199,6 +208,9 @@ void loop(void)
 			/* I2Cデータを表示する */
 			uartEchoStr(", I2C = ");
 			uartEchoHex8(u8_I2cData);
+			/* SPIデータを表示する */
+			uartEchoStr(", SPI = ");
+			uartEchoHex8(u8_SpiData);
 			uartEchoStrln("");
 		}
 
@@ -209,7 +221,7 @@ void loop(void)
 	/* ユーザーSWが押下された場合 */
 	if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_RESET) {
 		/* LED_GREENをHIGH出力する */
-		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+//		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 	}
 
@@ -239,6 +251,8 @@ void loop(void)
 		startTimer(&sts_Timer1s);
 		/* I2C通信を有効化 */
 		i2cComEnable();
+		/* SPI通信を有効化 */
+		spiComEnable();
 	}
 }
 

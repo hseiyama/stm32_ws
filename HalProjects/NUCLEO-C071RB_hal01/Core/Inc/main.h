@@ -89,8 +89,8 @@ extern void loop(void);				/* 周期処理関数					*/
 #define PWM_PERIOD 1000
 #define B1_Pin GPIO_PIN_13
 #define B1_GPIO_Port GPIOC
-#define LD1_Pin GPIO_PIN_5
-#define LD1_GPIO_Port GPIOA
+#define SPI1_NSS_Pin GPIO_PIN_15
+#define SPI1_NSS_GPIO_Port GPIOA
 #define LD2_Pin GPIO_PIN_9
 #define LD2_GPIO_Port GPIOC
 

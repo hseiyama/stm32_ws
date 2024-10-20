@@ -79,8 +79,8 @@ static uint8_t u8s_I2cEnable;									/* I2C有効フラグ				*/
 /* Exported functions --------------------------------------------------------*/
 
 /**
-  * @brief  Master Tx Transfer completed callback.
-  * @param  hi2c Pointer to a I2C_HandleTypeDef structure that contains
+  * @brief Master Tx Transfer completed callback.
+  * @param hi2c Pointer to a I2C_HandleTypeDef structure that contains
   *                the configuration information for the specified I2C.
   * @retval None
   */
@@ -92,8 +92,8 @@ void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
 }
 
 /**
-  * @brief  Master Rx Transfer completed callback.
-  * @param  hi2c Pointer to a I2C_HandleTypeDef structure that contains
+  * @brief Master Rx Transfer completed callback.
+  * @param hi2c Pointer to a I2C_HandleTypeDef structure that contains
   *                the configuration information for the specified I2C.
   * @retval None
   */
@@ -105,8 +105,8 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
 }
 
 /**
-  * @brief  I2C error callback.
-  * @param  hi2c Pointer to a I2C_HandleTypeDef structure that contains
+  * @brief I2C error callback.
+  * @param hi2c Pointer to a I2C_HandleTypeDef structure that contains
   *                the configuration information for the specified I2C.
   * @retval None
   */
@@ -133,6 +133,7 @@ void taskI2cDriverInit(void)
 	u8s_I2cState = I2C_STATE_IDLE;
 	u8s_I2cEnable = ON;
 
+#if I2C_ACTIVATE == ON
 	/* IOCON コンフィグレーションを初期化 */
 	sendI2cData(REG_IOCON, 0x00);
 	/* PORTA 0-3ピンを入力として設定 */
@@ -141,6 +142,7 @@ void taskI2cDriverInit(void)
 	/* PORTB 0-3ピンを出力として設定 */
 	sendI2cData(REG_IODIRB, 0xF0);
 	sendI2cData(REG_OLATB, 0x00);
+#endif
 }
 
 /**
@@ -160,11 +162,13 @@ void taskI2cDriverInput(void)
   */
 void taskI2cDriverOutput(void)
 {
+#if I2C_ACTIVATE == ON
 	/* I2C有効フラグがONの場合 */
 	if (u8s_I2cEnable == ON) {
 		/* I2C状態の更新処理 */
 		updateI2cState();
 	}
+#endif
 }
 
 /**

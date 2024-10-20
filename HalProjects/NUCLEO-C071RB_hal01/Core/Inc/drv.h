@@ -41,6 +41,13 @@ enum I2cRegisterInfo {
 	I2C_REGISTER_MAX				/* I2Cレジスタの上限					*/
 };
 
+/* SPIレジスタ情報 */
+enum SpiRegisterInfo {
+	SPI_REGISTER_PORTA = 0,			/* SPIレジスタPORTA(入力用)				*/
+	SPI_REGISTER_PORTB,				/* SPIレジスタPORTA(出力用)				*/
+	SPI_REGISTER_MAX				/* SPIレジスタの上限					*/
+};
+
 /* Exported constants --------------------------------------------------------*/
 #define ADC_FAILURE_VALUE		(0xFFFF)	/* ADCフェール値				*/
 #define UART_RX_BLOCK_SIZE		(4)			/* UART受信ブロックサイズ		*/
@@ -48,12 +55,15 @@ enum I2cRegisterInfo {
 #define FLASH_MARK_SIZE			(4)			/* FLASHマークサイズ			*/
 #define FLASH_DATA_SIZE			(FLASH_BLOCK_SIZE - FLASH_MARK_SIZE)
 											/* FLASHデータサイズ			*/
+#define I2C_ACTIVATE			ON			/* I2Cアクティベート			*/
+#define SPI_ACTIVATE			ON			/* SPIアクティベート			*/
 
 /* Exported macro ------------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
 extern UART_HandleTypeDef huart2;
 extern TIM_HandleTypeDef htim3;
 extern I2C_HandleTypeDef hi2c1;
+extern SPI_HandleTypeDef hspi1;
 
 /* Exported functions prototypes ---------------------------------------------*/
 
@@ -101,5 +111,14 @@ extern void i2cComEnable(void);												/* I2C通信を有効化						*/
 extern void i2cComDisable(void);											/* I2C通信を無効化						*/
 extern uint8_t i2cGetData(uint16_t u16_Register, uint8_t *pu8_Data);		/* I2Cデータを取得する					*/
 extern uint8_t i2cSetData(uint16_t u16_Register, uint8_t u8_Data);			/* I2Cデータを登録する					*/
+
+/* drv_spi.c */
+extern void taskSpiDriverInit(void);										/* SPIドライバー初期化処理				*/
+extern void taskSpiDriverInput(void);										/* SPIドライバー入力処理				*/
+extern void taskSpiDriverOutput(void);										/* SPIドライバー出力処理				*/
+extern void spiComEnable(void);												/* SPI通信を有効化						*/
+extern void spiComDisable(void);											/* SPI通信を無効化						*/
+extern uint8_t spiGetData(uint16_t u16_Register, uint8_t *pu8_Data);		/* SPIデータを取得する					*/
+extern uint8_t spiSetData(uint16_t u16_Register, uint8_t u8_Data);			/* SPIデータを登録する					*/
 
 #endif /* __DRV_H */

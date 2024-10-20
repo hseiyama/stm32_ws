@@ -49,7 +49,7 @@ typedef struct _FlashBlockAddress {
 #define DATA_MARK_OFFSET		FLASH_DATA_SIZE				/* FLASHデータマークオフセット		*/
 #define MARK_OFF				(0xFFFFFFFF)				/* マークOFF						*/
 #define MARK_ON					(0xCC55CC55)				/* マークON							*/
-#define DEBUG_FLASH				(ON)						/* デバッグ用マクロの切り替え		*/
+#define DEBUG_FLASH				ON							/* デバッグ用マクロの切り替え		*/
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -91,8 +91,8 @@ static void updateFlashState(void);									/* FLASH状態の更新処理					*/
 /* Exported functions --------------------------------------------------------*/
 
 /**
-  * @brief  FLASH end of operation interrupt callback.
-  * @param  ReturnValue The value saved in this parameter depends on the ongoing procedure
+  * @brief FLASH end of operation interrupt callback.
+  * @param ReturnValue The value saved in this parameter depends on the ongoing procedure
   *                  Page Erase: Page which has been erased
   *                  Program: Address which was selected for data program
   * @retval None
@@ -114,8 +114,8 @@ void HAL_FLASH_EndOfOperationCallback(uint32_t ReturnValue)
 }
 
 /**
-  * @brief  FLASH operation error interrupt callback.
-  * @param  ReturnValue The value saved in this parameter depends on the ongoing procedure
+  * @brief FLASH operation error interrupt callback.
+  * @param ReturnValue The value saved in this parameter depends on the ongoing procedure
   *                 Page Erase: Page number which returned an error
   *                 Program: Address which was selected for data program
   * @retval None

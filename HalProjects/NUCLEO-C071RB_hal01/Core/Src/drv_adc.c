@@ -44,7 +44,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 }
 
 /**
-  * @brief  ADC error callback in non-blocking mode
+  * @brief ADC error callback in non-blocking mode
   * @param hadc ADC handle
   * @retval None
   */
