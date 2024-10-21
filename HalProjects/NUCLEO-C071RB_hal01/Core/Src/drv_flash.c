@@ -48,7 +48,7 @@ typedef struct _FlashBlockAddress {
 															/* FLASHデータブロック数			*/
 #define DATA_MARK_OFFSET		FLASH_DATA_SIZE				/* FLASHデータマークオフセット		*/
 #define MARK_OFF				(0xFFFFFFFF)				/* マークOFF						*/
-#define MARK_ON					(0xCC55CC55)				/* マークON							*/
+#define MARK_ON					(0xAA55AA55)				/* マークON							*/
 #define DEBUG_FLASH				ON							/* デバッグ用マクロの切り替え		*/
 
 /* Private macro -------------------------------------------------------------*/

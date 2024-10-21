@@ -181,14 +181,14 @@ void loop(void)
 
 	/* I2Cデータを取得する */
 	if (i2cGetData(I2C_REGISTER_PORTA, &u8_I2cData) == OK) {
-		/* I2Cデータを登録する */
-		i2cSetData(I2C_REGISTER_PORTB, u8_I2cData);
+		/* SPIデータを登録する */
+		spiSetData(SPI_REGISTER_PORTB, u8_I2cData);
 	}
 
 	/* SPIデータを取得する */
 	if (spiGetData(SPI_REGISTER_PORTA, &u8_SpiData) == OK) {
-		/* SPIデータを登録する */
-		spiSetData(SPI_REGISTER_PORTB, u8_SpiData);
+		/* I2Cデータを登録する */
+		i2cSetData(I2C_REGISTER_PORTB, u8_SpiData);
 	}
 
 	/* 1秒判定時間が満了した場合 */

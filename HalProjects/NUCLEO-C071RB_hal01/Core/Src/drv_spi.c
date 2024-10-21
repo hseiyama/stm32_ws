@@ -87,6 +87,8 @@ static uint8_t u8s_SpiEnable;									/* SPI有効フラグ				*/
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 {
 	if (hspi == &hspi1) {
+		/* SPI1_NSSを非アクティブに設定する */
+		HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
 		u8s_SpiIrqTxEnd = ON;
 	}
 }
@@ -100,6 +102,8 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
 	if (hspi == &hspi1) {
+		/* SPI1_NSSを非アクティブに設定する */
+		HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
 		u8s_SpiIrqRxEnd = ON;
 	}
 }
@@ -113,6 +117,8 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 {
 	if (hspi == &hspi1) {
+		/* SPI1_NSSを非アクティブに設定する */
+		HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
 		u8s_SpiIrqError = ON;
 	}
 }
@@ -244,6 +250,8 @@ static uint8_t sendSpiData(uint8_t u8_RegAddr, uint8_t u8_Data)
 	u8s_SpiTxBuffer[0] = MCP23S17_ADDR;
 	u8s_SpiTxBuffer[1] = u8_RegAddr;
 	u8s_SpiTxBuffer[2] = u8_Data;
+	/* SPI1_NSSをアクティブに設定する */
+	HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
 	/* SPI送信(割り込み)を開始 */
 	if (HAL_SPI_Transmit_IT(&hspi1, (uint8_t *)&u8s_SpiTxBuffer[0], TX_BUFFER_SIZE) != HAL_OK) {
 		/* Transmitting Error */
@@ -270,6 +278,8 @@ static uint8_t sendSpiData(uint8_t u8_RegAddr, uint8_t u8_Data)
   */
 static uint8_t sendSpiDataReq(const uint8_t *pu8_Data, uint16_t u16_Size)
 {
+	/* SPI1_NSSをアクティブに設定する */
+	HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
 	/* SPI送信(割り込み)を開始 */
 	if (HAL_SPI_Transmit_IT(&hspi1, pu8_Data, u16_Size) != HAL_OK) {
 		/* Transmitting Error */
@@ -287,6 +297,8 @@ static uint8_t sendSpiDataReq(const uint8_t *pu8_Data, uint16_t u16_Size)
   */
 static uint8_t recvSpiDataReq(const uint8_t *pu8_TxData, uint8_t *pu8_RxData, uint16_t u16_Size)
 {
+	/* SPI1_NSSをアクティブに設定する */
+	HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
 	/* SPI送信受信(割り込み)を開始 */
 	if (HAL_SPI_TransmitReceive_IT(&hspi1, pu8_TxData, pu8_RxData, u16_Size) != HAL_OK) {
 		/* Receiving Error */
@@ -313,7 +325,7 @@ static void updateSpiState(void)
 		u8s_SpiTxBuffer[1] = SpiRegAddrTable[SPI_REGISTER_PORTA];
 		u8s_SpiTxBuffer[2] = 0;
 		mem_set08((uint8_t *)&u8s_SpiRxBuffer[0], 0x00, RX_BUFFER_SIZE);
-		/* SPIデータを送信する(非同期) */
+		/* SPIデータを受信する(非同期) */
 		recvSpiDataReq((uint8_t *)&u8s_SpiTxBuffer[0], (uint8_t *)&u8s_SpiRxBuffer[0], RX_BUFFER_SIZE);
 		u8s_SpiState = SPI_STATE_READ;
 		break;

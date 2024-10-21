@@ -325,7 +325,7 @@ static void updateI2cState(void)
 		if (u8s_I2cIrqTxEnd == ON) {
 			u8s_I2cIrqTxEnd = OFF;
 			/* I2Cデータを受信する(非同期) */
-			recvI2cDataReq((uint8_t *)&u8s_I2cRxBuffer[1], 1);
+			recvI2cDataReq((uint8_t *)&u8s_I2cRxBuffer[1], RX_BUFFER_SIZE - 1);
 			u8s_I2cState = I2C_STATE_READ2;
 		}
 		else if (u8s_I2cIrqError == ON) {
@@ -344,7 +344,7 @@ static void updateI2cState(void)
 			u8s_I2cTxBuffer[0] = I2cRegAddrTable[I2C_REGISTER_PORTB];
 			u8s_I2cTxBuffer[1] = u8s_I2cData[I2C_REGISTER_PORTB];
 			/* I2Cデータを送信する(非同期) */
-			sendI2cDataReq((uint8_t *)&u8s_I2cTxBuffer[0], 2);
+			sendI2cDataReq((uint8_t *)&u8s_I2cTxBuffer[0], TX_BUFFER_SIZE);
 			u8s_I2cState = I2C_STATE_WRITE;
 		}
 		else if (u8s_I2cIrqError == ON) {
