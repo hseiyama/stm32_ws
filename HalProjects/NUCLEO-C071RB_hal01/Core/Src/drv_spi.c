@@ -252,20 +252,24 @@ static uint8_t sendSpiData(uint8_t u8_RegAddr, uint8_t u8_Data)
 	u8s_SpiTxBuffer[2] = u8_Data;
 	/* SPI1_NSSをアクティブに設定する */
 	HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
-	/* SPI送信(割り込み)を開始 */
-	if (HAL_SPI_Transmit_IT(&hspi1, (uint8_t *)&u8s_SpiTxBuffer[0], TX_BUFFER_SIZE) != HAL_OK) {
+	/* SPI送信(同期)を開始 */
+//	if (HAL_SPI_Transmit_IT(&hspi1, (uint8_t *)&u8s_SpiTxBuffer[0], TX_BUFFER_SIZE) != HAL_OK) {
+	if (HAL_SPI_Transmit(&hspi1, (uint8_t *)&u8s_SpiTxBuffer[0], TX_BUFFER_SIZE, 10) != HAL_OK) {
 		/* Transmitting Error */
 		Error_Handler();
 	}
+	/* SPI1_NSSを非アクティブに設定する */
+	HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
 
-	while ((u8s_SpiIrqTxEnd == OFF) && (u8s_SpiIrqError == OFF)) {
-		/* 何もしない */
-	}
-	if (u8s_SpiIrqTxEnd == ON) {
-		u8_RetCode = OK;
-	}
-	u8s_SpiIrqTxEnd = OFF;
-	u8s_SpiIrqError = OFF;
+//	while ((u8s_SpiIrqTxEnd == OFF) && (u8s_SpiIrqError == OFF)) {
+//		/* 何もしない */
+//	}
+//	if (u8s_SpiIrqTxEnd == ON) {
+//		u8_RetCode = OK;
+//	}
+//	u8s_SpiIrqTxEnd = OFF;
+//	u8s_SpiIrqError = OFF;
+	u8_RetCode = OK;
 
 	return u8_RetCode;
 }
@@ -280,11 +284,14 @@ static uint8_t sendSpiDataReq(const uint8_t *pu8_Data, uint16_t u16_Size)
 {
 	/* SPI1_NSSをアクティブに設定する */
 	HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
-	/* SPI送信(割り込み)を開始 */
-	if (HAL_SPI_Transmit_IT(&hspi1, pu8_Data, u16_Size) != HAL_OK) {
+	/* SPI送信(同期)を開始 */
+//	if (HAL_SPI_Transmit_IT(&hspi1, pu8_Data, u16_Size) != HAL_OK) {
+	if (HAL_SPI_Transmit(&hspi1, pu8_Data, u16_Size, 10) != HAL_OK) {
 		/* Transmitting Error */
 		Error_Handler();
 	}
+	/* SPI1_NSSを非アクティブに設定する */
+	HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
 	return OK;
 }
 
@@ -299,11 +306,14 @@ static uint8_t recvSpiDataReq(const uint8_t *pu8_TxData, uint8_t *pu8_RxData, ui
 {
 	/* SPI1_NSSをアクティブに設定する */
 	HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
-	/* SPI送信受信(割り込み)を開始 */
-	if (HAL_SPI_TransmitReceive_IT(&hspi1, pu8_TxData, pu8_RxData, u16_Size) != HAL_OK) {
+	/* SPI送信受信(同期)を開始 */
+//	if (HAL_SPI_TransmitReceive_IT(&hspi1, pu8_TxData, pu8_RxData, u16_Size) != HAL_OK) {
+	if (HAL_SPI_TransmitReceive(&hspi1, pu8_TxData, pu8_RxData, u16_Size, 10) != HAL_OK) {
 		/* Receiving Error */
 		Error_Handler();
 	}
+	/* SPI1_NSSを非アクティブに設定する */
+	HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
 	return OK;
 }
 
@@ -331,8 +341,8 @@ static void updateSpiState(void)
 		break;
 	/* 読み込み中 */
 	case SPI_STATE_READ:
-		if (u8s_SpiIrqRxEnd == ON) {
-			u8s_SpiIrqRxEnd = OFF;
+//		if (u8s_SpiIrqRxEnd == ON) {
+//			u8s_SpiIrqRxEnd = OFF;
 			/* 受信したSPIデータを格納する */
 			u8s_SpiData[SPI_REGISTER_PORTA] = u8s_SpiRxBuffer[2];
 			/* SPI送信の準備 */
@@ -342,25 +352,25 @@ static void updateSpiState(void)
 			/* SPIデータを送信する(非同期) */
 			sendSpiDataReq((uint8_t *)&u8s_SpiTxBuffer[0], TX_BUFFER_SIZE);
 			u8s_SpiState = SPI_STATE_WRITE;
-		}
-		else if (u8s_SpiIrqError == ON) {
-			u8s_SpiIrqError = OFF;
-			/* 動作なしに遷移する */
-			u8s_SpiState = SPI_STATE_IDLE;
-		}
+//		}
+//		else if (u8s_SpiIrqError == ON) {
+//			u8s_SpiIrqError = OFF;
+//			/* 動作なしに遷移する */
+//			u8s_SpiState = SPI_STATE_IDLE;
+//		}
 		break;
 	/* 書き込み中 */
 	case SPI_STATE_WRITE:
-		if (u8s_SpiIrqTxEnd == ON) {
-			u8s_SpiIrqTxEnd = OFF;
+//		if (u8s_SpiIrqTxEnd == ON) {
+//			u8s_SpiIrqTxEnd = OFF;
 			/* 動作なしに遷移する */
 			u8s_SpiState = SPI_STATE_IDLE;
-		}
-		else if (u8s_SpiIrqError == ON) {
-			u8s_SpiIrqError = OFF;
-			/* 動作なしに遷移する */
-			u8s_SpiState = SPI_STATE_IDLE;
-		}
+//		}
+//		else if (u8s_SpiIrqError == ON) {
+//			u8s_SpiIrqError = OFF;
+//			/* 動作なしに遷移する */
+//			u8s_SpiState = SPI_STATE_IDLE;
+//		}
 		break;
 	/* 上記以外 */
 	default:

@@ -57,7 +57,6 @@
 /* External variables --------------------------------------------------------*/
 extern DMA_HandleTypeDef hdma_adc1;
 extern I2C_HandleTypeDef hi2c1;
-extern SPI_HandleTypeDef hspi1;
 extern TIM_HandleTypeDef htim14;
 extern UART_HandleTypeDef huart2;
 /* USER CODE BEGIN EV */
@@ -216,20 +215,6 @@ void I2C1_IRQHandler(void)
   /* USER CODE BEGIN I2C1_IRQn 1 */
 
   /* USER CODE END I2C1_IRQn 1 */
-}
-
-/**
-  * @brief This function handles SPI1 interrupt.
-  */
-void SPI1_IRQHandler(void)
-{
-  /* USER CODE BEGIN SPI1_IRQn 0 */
-
-  /* USER CODE END SPI1_IRQn 0 */
-  HAL_SPI_IRQHandler(&hspi1);
-  /* USER CODE BEGIN SPI1_IRQn 1 */
-
-  /* USER CODE END SPI1_IRQn 1 */
 }
 
 /**
