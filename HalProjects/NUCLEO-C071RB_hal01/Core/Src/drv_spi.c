@@ -65,8 +65,8 @@ static const uint8_t SpiRegAddrTable[SPI_REGISTER_MAX] = {
 	REG_OLATB								/* SPI_REGISTER_PORTB			*/
 };
 
-volatile static uint8_t u8s_SpiTxBuffer[TX_BUFFER_SIZE];		/* SPI送信バッファ				*/
-volatile static uint8_t u8s_SpiRxBuffer[RX_BUFFER_SIZE];		/* SPI受信バッファ				*/
+volatile static uint8_t u8s_SpiTxBuffer[TX_BUFFER_SIZE] __ALIGNED(4);	/* SPI送信バッファ				*/
+volatile static uint8_t u8s_SpiRxBuffer[RX_BUFFER_SIZE] __ALIGNED(4);	/* SPI受信バッファ				*/
 volatile static uint8_t u8s_SpiIrqTxEnd;						/* SPI送信割り込み終了フラグ	*/
 volatile static uint8_t u8s_SpiIrqRxEnd;						/* SPI受信割り込み終了フラグ	*/
 volatile static uint8_t u8s_SpiIrqError;						/* SPI割り込みエラーフラグ		*/

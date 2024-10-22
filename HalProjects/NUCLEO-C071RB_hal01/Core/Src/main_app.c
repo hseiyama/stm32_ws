@@ -21,19 +21,19 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+static uint8_t u8s_FlashDataBuffer[FLASH_DATA_SIZE] __ALIGNED(4);	/* FLASHデータバッファ		*/
+volatile static uint8_t u8s_Exti0Event;						/* 外部割込み0発生フラグ	*/
 static Timer sts_Timer1s;									/* 1秒タイマー				*/
 static Timer sts_TimerSleepWait;							/* スリープ待ちタイマー		*/
 static uint8_t u8s_TxBuffer[UART_BUFF_SIZE];				/* UART送信バッファ			*/
 static uint8_t u8s_RxBuffer[UART_BUFF_SIZE];				/* UART受信バッファ			*/
 static uint16_t u16s_AdcData[ADC_CHANNEL_MAX];				/* ADCデータ(全チャネル)	*/
 static uint8_t u8s_DisplayState;							/* 表示状態					*/
-static uint8_t u8s_FlashDataBuffer[FLASH_DATA_SIZE];		/* FLASHデータバッファ		*/
 static uint16_t u16s_PwmDutyValue;							/* PWMデューティ値			*/
 static uint16_t u16s_PwmDutyValue_prev;						/* PWMデューティ値(前回値)	*/
 static uint8_t u8s_MessageData[MESSAGE_SIZE + 1];			/* メッセージデータ			*/
 static uint16_t u16s_MessageCount;							/* メッセージカウント		*/
 static uint8_t u8s_MessageUpdate;							/* メッセージ更新フラグ		*/
-volatile static uint8_t u8s_Exti0Event;						/* 外部割込み0発生フラグ	*/
 
 /* Private function prototypes -----------------------------------------------*/
 static void getFlashData(void);								/* FLASHデータを取得する				*/

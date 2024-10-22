@@ -65,17 +65,17 @@ typedef struct _FlashBlockAddress {
 /* Private variables ---------------------------------------------------------*/
 
 /* FLASHデータ初期値 */
-static const uint8_t FlashDataInit[FLASH_BLOCK_SIZE] = {
+static const uint8_t FlashDataInit[FLASH_BLOCK_SIZE] __ALIGNED(4) = {
 	0x00, 0x00, 'P',  'W',  'M',  '=',  '_',  '_',  '0',  '%',  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
+static uint8_t u8s_FlashDataBuffer[FLASH_BLOCK_SIZE] __ALIGNED(4);	/* FLASHデータバッファ			*/
 volatile static uint8_t u8s_FlashState;							/* FLASH状態					*/
 volatile static uint8_t u8s_FlashIrqEnd;						/* FLASH割り込み終了フラグ		*/
 volatile static uint8_t u8s_FlashIrqError;						/* FLASH割り込みエラーフラグ	*/
-static uint8_t u8s_FlashDataBuffer[FLASH_BLOCK_SIZE];			/* FLASHデータバッファ			*/
 static FlashBlockAddress sts_FlashBlockAddr;					/* FLASHブロックアドレス		*/
 static uint8_t u8s_FlashWriteRequest;							/* FLASH書き込み要求			*/
 static uint32_t u32s_FlashWriteAddr;							/* FLASH書き込みアドレス		*/
