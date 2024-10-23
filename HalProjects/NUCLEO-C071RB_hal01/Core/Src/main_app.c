@@ -21,6 +21,8 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+extern RTC_HandleTypeDef hrtc;								/* RTCのハンドル			*/
+
 static uint8_t u8s_FlashDataBuffer[FLASH_DATA_SIZE] __ALIGNED(4);	/* FLASHデータバッファ		*/
 volatile static uint8_t u8s_Exti0Event;						/* 外部割込み0発生フラグ	*/
 static Timer sts_Timer1s;									/* 1秒タイマー				*/
@@ -38,6 +40,7 @@ static uint8_t u8s_MessageUpdate;							/* メッセージ更新フラグ		*/
 /* Private function prototypes -----------------------------------------------*/
 static void getFlashData(void);								/* FLASHデータを取得する				*/
 static void setFlashData(void);								/* FLASHデータを更新する				*/
+static void showRtcTime(void);								/* RTC時間を表示する					*/
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -218,6 +221,8 @@ void loop(void)
 			/* SPIデータを表示する */
 			uartEchoStr(", SPI = ");
 			uartEchoHex8(u8_SpiData);
+			/* RTC時間を表示する */
+			showRtcTime();
 			uartEchoStrln("");
 		}
 
@@ -302,4 +307,25 @@ static void setFlashData(void)
 	flashSetData(&u8s_FlashDataBuffer[0], FLASH_DATA_SIZE);
 	/* FLASHデータの書き込みを要求する */
 	flashWriteDataRequest();
+}
+
+/**
+  * @brief RTC時間を表示する
+  * @param None
+  * @retval None
+  */
+static void showRtcTime(void)
+{
+	RTC_TimeTypeDef st_RtcTime;
+
+	/* RTC現在時間を取得 */
+	HAL_RTC_GetTime(&hrtc, &st_RtcTime, RTC_FORMAT_BCD);
+
+	/* RTC現在時間を表示する */
+	uartEchoStr(", RTC = ");
+	uartEchoHex8(st_RtcTime.Hours);
+	uartEchoStr(":");
+	uartEchoHex8(st_RtcTime.Minutes);
+	uartEchoStr(":");
+	uartEchoHex8(st_RtcTime.Seconds);
 }
