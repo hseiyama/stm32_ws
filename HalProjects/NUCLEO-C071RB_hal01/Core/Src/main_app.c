@@ -172,6 +172,13 @@ void loop(void)
 			/* タイマーを開始する */
 			startTimer(&sts_TimerSleepWait);
 		}
+		/* 無限ループを実行する */
+		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"loop", UART_RX_BLOCK_SIZE) == 0) {
+			while (true) {
+				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+				HAL_Delay(125);
+			}
+		}
 	}
 
 	for (u16_Index = 0; u16_Index < ADC_CHANNEL_MAX; u16_Index++) {
