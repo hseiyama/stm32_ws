@@ -317,9 +317,12 @@ static void setFlashData(void)
 static void showRtcTime(void)
 {
 	RTC_TimeTypeDef st_RtcTime;
+	RTC_DateTypeDef st_RtcDate;
 
 	/* RTC現在時間を取得 */
 	HAL_RTC_GetTime(&hrtc, &st_RtcTime, RTC_FORMAT_BCD);
+	/* RTC現在日付を取得(シャドウレジスタのロックを解除) */
+	HAL_RTC_GetDate(&hrtc, &st_RtcDate, RTC_FORMAT_BCD);
 
 	/* RTC現在時間を表示する */
 	uartEchoStr(", RTC = ");
