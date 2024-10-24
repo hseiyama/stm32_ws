@@ -17,7 +17,8 @@
 #define TIME_SLEEP_WAIT		(1000)					/* スリープ待ち時間[ms]		*/
 #define UART_BUFF_SIZE		(8)						/* UARTバッファサイズ		*/
 #define MESSAGE_SIZE		(8)						/* メッセージサイズ			*/
-#define CRC_DATA_ADDR		(0x08000000)			/* CRC演算データアドレス	*/
+#define CRC_DATA_ADDR0		(0x00000000)			/* CRC演算データアドレス0	*/
+#define CRC_DATA_ADDR1		(0x08000000)			/* CRC演算データアドレス1	*/
 #define CRC_DATA_SIZE		(48)					/* CRC演算データサイズ		*/
 
 /* Private macro -------------------------------------------------------------*/
@@ -186,10 +187,17 @@ void loop(void)
 				HAL_Delay(125);
 			}
 		}
-		/* CRC演算を実行する */
+		/* CRC演算を実行する(データアドレス0) */
 		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"crc0", UART_RX_BLOCK_SIZE) == 0) {
-			u32_CrcValue = HAL_CRC_Calculate(&hcrc, (uint32_t *)CRC_DATA_ADDR, CRC_DATA_SIZE);
-			uartEchoStr("CRC = ");
+			u32_CrcValue = HAL_CRC_Calculate(&hcrc, (uint32_t *)CRC_DATA_ADDR0, CRC_DATA_SIZE);
+			uartEchoStr("CRC0 = ");
+			uartEchoHex32(u32_CrcValue);
+			uartEchoStrln("");
+		}
+		/* CRC演算を実行する(データアドレス1) */
+		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"crc1", UART_RX_BLOCK_SIZE) == 0) {
+			u32_CrcValue = HAL_CRC_Calculate(&hcrc, (uint32_t *)CRC_DATA_ADDR1, CRC_DATA_SIZE);
+			uartEchoStr("CRC1 = ");
 			uartEchoHex32(u32_CrcValue);
 			uartEchoStrln("");
 		}
