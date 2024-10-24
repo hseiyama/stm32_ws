@@ -16,12 +16,15 @@
 #define TIME_1S				(1000)					/* 1秒判定時間[ms]			*/
 #define TIME_SLEEP_WAIT		(1000)					/* スリープ待ち時間[ms]		*/
 #define UART_BUFF_SIZE		(8)						/* UARTバッファサイズ		*/
-#define MESSAGE_SIZE		(8)						/* メッセージサイズ		*/
+#define MESSAGE_SIZE		(8)						/* メッセージサイズ			*/
+#define CRC_DATA_ADDR		(0x08000000)			/* CRC演算データアドレス	*/
+#define CRC_DATA_SIZE		(48)					/* CRC演算データサイズ		*/
 
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
 extern RTC_HandleTypeDef hrtc;								/* RTCのハンドル			*/
+extern CRC_HandleTypeDef hcrc;								/* CRCのハンドル			*/
 
 static uint8_t u8s_FlashDataBuffer[FLASH_DATA_SIZE] __ALIGNED(4);	/* FLASHデータバッファ		*/
 volatile static uint8_t u8s_Exti0Event;						/* 外部割込み0発生フラグ	*/
@@ -104,6 +107,7 @@ void loop(void)
 	uint16_t u16_RxSize;
 	uint8_t u8_I2cData;
 	uint8_t u8_SpiData;
+	uint32_t u32_CrcValue;
 
 	/* UART受信データの数を取得する */
 	if (uartGetRxCount() >= UART_RX_BLOCK_SIZE) {
@@ -181,6 +185,13 @@ void loop(void)
 				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 				HAL_Delay(125);
 			}
+		}
+		/* CRC演算を実行する */
+		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"crc0", UART_RX_BLOCK_SIZE) == 0) {
+			u32_CrcValue = HAL_CRC_Calculate(&hcrc, (uint32_t *)CRC_DATA_ADDR, CRC_DATA_SIZE);
+			uartEchoStr("CRC = ");
+			uartEchoHex32(u32_CrcValue);
+			uartEchoStrln("");
 		}
 	}
 
