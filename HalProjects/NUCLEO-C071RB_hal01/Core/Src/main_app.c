@@ -13,6 +13,8 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
+#define __SECTION_RO		__attribute__((section(".ROSection")))
+
 #define TIME_1S				(1000)					/* 1秒判定時間[ms]			*/
 #define TIME_SLEEP_WAIT		(1000)					/* スリープ待ち時間[ms]		*/
 #define UART_BUFF_SIZE		(8)						/* UARTバッファサイズ		*/
@@ -45,6 +47,8 @@ static uint8_t u8s_RtcStrData[RTC_STR_SIZE];				/* RTC文字列データ			*/
 static uint16_t u16s_RtcStrCount;							/* RTC文字列カウント		*/
 static uint8_t u8s_RtcDateUpdate;							/* RTC日付更新フラグ		*/
 static uint8_t u8s_RtcTimeUpdate;							/* RTC時刻更新フラグ		*/
+static uint32_t u32s_MpuRoData __SECTION_RO;				/* MPU読み出し専用データ	*/
+static uint32_t u32s_MpuWorkData;							/* MPUワーク用データ		*/
 
 /* Private function prototypes -----------------------------------------------*/
 static void getFlashData(void);								/* FLASHデータを取得する				*/
@@ -92,6 +96,7 @@ void setup(void)
 	u16s_RtcStrCount = 0;
 	u8s_RtcDateUpdate = OFF;
 	u8s_RtcTimeUpdate = OFF;
+	u32s_MpuWorkData = 0;
 
 	/* UART送信バッファに改行コードをセット */
 	u8s_TxBuffer[UART_RX_BLOCK_SIZE] = '\r';			/* CRコード					*/
@@ -259,6 +264,18 @@ void loop(void)
 			uartEchoStr("CRC1 = ");
 			uartEchoHex32(u32_CrcValue);
 			uartEchoStrln("");
+		}
+		/* MPUを無効化する */
+		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"mpu0", UART_RX_BLOCK_SIZE) == 0) {
+			HAL_MPU_Disable();
+		}
+		/* MPU読み出し専用データを読み出す */
+		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"mpur", UART_RX_BLOCK_SIZE) == 0) {
+			u32s_MpuWorkData = u32s_MpuRoData;
+		}
+		/* MPU読み出し専用データに書き込む */
+		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"mpuw", UART_RX_BLOCK_SIZE) == 0) {
+			u32s_MpuRoData = 0xAA55AA55;
 		}
 	}
 

@@ -46,6 +46,7 @@ MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 24K
   FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 128K
+  RAM_RO   (rw)   : ORIGIN = 0x20005000,   LENGTH = 1K
 }
 
 /* Sections */
@@ -184,4 +185,5 @@ SECTIONS
   }
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
+  .ROSection        : {*(.ROSection)} >RAM_RO
 }
