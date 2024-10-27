@@ -17,6 +17,7 @@
 
 #define TIME_1S				(1000)					/* 1秒判定時間[ms]			*/
 #define TIME_SLEEP_WAIT		(1000)					/* スリープ待ち時間[ms]		*/
+#define TIME_STANDBY_WAIT	(100)					/* スタンバイ待ち時間[ms]	*/
 #define UART_BUFF_SIZE		(8)						/* UARTバッファサイズ		*/
 #define MESSAGE_SIZE		(8)						/* メッセージサイズ			*/
 #define CRC_DATA_ADDR0		(0x00000000)			/* CRC演算データアドレス0	*/
@@ -34,6 +35,7 @@ static uint8_t u8s_FlashDataBuffer[FLASH_DATA_SIZE] __ALIGNED(4);	/* FLASHデー
 volatile static uint8_t u8s_Exti0Event;						/* 外部割込み0発生フラグ	*/
 static Timer sts_Timer1s;									/* 1秒タイマー				*/
 static Timer sts_TimerSleepWait;							/* スリープ待ちタイマー		*/
+static Timer sts_TimerStandbyWait;							/* スタンバイ待ちタイマー	*/
 static uint8_t u8s_TxBuffer[UART_BUFF_SIZE];				/* UART送信バッファ			*/
 static uint8_t u8s_RxBuffer[UART_BUFF_SIZE];				/* UART受信バッファ			*/
 static uint16_t u16s_AdcData[ADC_CHANNEL_MAX];				/* ADCデータ(全チャネル)	*/
@@ -109,6 +111,7 @@ void setup(void)
 	startTimer(&sts_Timer1s);
 	/* タイマーを停止する */
 	stopTimer(&sts_TimerSleepWait);
+	stopTimer(&sts_TimerStandbyWait);
 
 	/* プログラム開始メッセージを表示する */
 	uartEchoStrln("Start ADC/UART sample!!");
@@ -230,6 +233,12 @@ void loop(void)
 			/* タイマーを開始する */
 			startTimer(&sts_TimerSleepWait);
 		}
+		/* スタンバイ移行の要求 */
+		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"stby", UART_RX_BLOCK_SIZE) == 0) {
+			uartEchoStrln("GotoStandby!");
+			/* タイマーを開始する */
+			startTimer(&sts_TimerStandbyWait);
+		}
 		/* 無限ループを実行する */
 		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"loop", UART_RX_BLOCK_SIZE) == 0) {
 			while (true) {
@@ -298,8 +307,7 @@ void loop(void)
 
 	/* 1秒判定時間が満了した場合 */
 	if (checkTimer(&sts_Timer1s, TIME_1S)) {
-		/* LEDを反転出力する */
-//		HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+		/* ユーザーLEDを反転出力する */
 		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
 		/* 表示状態がONの場合 */
@@ -327,8 +335,7 @@ void loop(void)
 
 	/* ユーザーSWが押下された場合 */
 	if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_RESET) {
-		/* LED_GREENをHIGH出力する */
-//		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+		/* ユーザーLEDを点灯出力する */
 		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 	}
 
@@ -360,6 +367,20 @@ void loop(void)
 		i2cComEnable();
 		/* SPI通信を有効化 */
 		spiComEnable();
+	}
+
+	/* スタンバイ待ち時間が満了した場合 */
+	if (checkTimer(&sts_TimerStandbyWait, TIME_STANDBY_WAIT)) {
+		/* タイマーを停止する */
+		stopTimer(&sts_TimerStandbyWait);
+
+		/* ウェイクアップピン(PWR_WAKEUP3:立ち下りエッジ)を有効化 */
+		HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN3_LOW);
+		/* 関連するウェイクアップフラグを削除*/
+		__HAL_PWR_CLEAR_FLAG(PWR_FLAG_WUF3);
+		/* スタンバイへ移行 */
+		HAL_PWR_EnterSTANDBYMode();
+		/* 以降のコードはコールされない */
 	}
 }
 
