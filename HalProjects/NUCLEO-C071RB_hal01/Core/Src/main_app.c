@@ -24,12 +24,16 @@
 #define CRC_DATA_ADDR1		(0x08000000)			/* CRC演算データアドレス1	*/
 #define CRC_DATA_SIZE		(48)					/* CRC演算データサイズ		*/
 #define RTC_STR_SIZE		(8)						/* RTC文字列サイズ			*/
+#define DMA_DATA0_ADDR		(0x08000000)			/* DMAデータ0アドレス		*/
+#define DMA_DATA_SIZE		(48)					/* DMAデータサイズ(32bit)	*/
 
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
 extern RTC_HandleTypeDef hrtc;								/* RTCのハンドル			*/
 extern CRC_HandleTypeDef hcrc;								/* CRCのハンドル			*/
+extern DMA_HandleTypeDef hdma_memtomem_dma1_channel2;		/* DMA_CH2のハンドル		*/
+extern DMA_HandleTypeDef hdma_memtomem_dma1_channel3;		/* DMA_CH3のハンドル		*/
 
 static uint8_t u8s_FlashDataBuffer[FLASH_DATA_SIZE] __ALIGNED(4);	/* FLASHデータバッファ		*/
 volatile static uint8_t u8s_Exti0Event;						/* 外部割込み0発生フラグ	*/
@@ -51,22 +55,34 @@ static uint8_t u8s_RtcDateUpdate;							/* RTC日付更新フラグ		*/
 static uint8_t u8s_RtcTimeUpdate;							/* RTC時刻更新フラグ		*/
 static uint32_t u32s_MpuRoData __SECTION_RO;				/* MPU読み出し専用データ	*/
 static uint32_t u32s_MpuWorkData;							/* MPUワーク用データ		*/
+static uint32_t u32s_DmaData1[DMA_DATA_SIZE];				/* DMAデータ1				*/
+static uint32_t u32s_DmaData2[DMA_DATA_SIZE];				/* DMAデータ2				*/
+static uint8_t u8s_DmaCh2TransferComplete;					/* DMA_CH2転送完了フラグ	*/
+static uint8_t u8s_DmaCh2TransferError;						/* DMA_CH2転送失敗フラグ	*/
+static uint8_t u8s_DmaCh3TransferComplete;					/* DMA_CH3転送完了フラグ	*/
+static uint8_t u8s_DmaCh3TransferError;						/* DMA_CH3転送失敗フラグ	*/
 
 /* Private function prototypes -----------------------------------------------*/
-static void getFlashData(void);								/* FLASHデータを取得する				*/
-static void setFlashData(void);								/* FLASHデータを更新する				*/
-static void showRtcTime(void);								/* RTC時間を表示する					*/
-static void showRtcDateTime(void);							/* RTC日時を表示する					*/
-static void updateRtcDate(uint8_t *pu8_BcdData);			/* RTC日付を更新する					*/
-static void updateRtcTime(uint8_t *pu8_BcdData);			/* RTC時刻を更新する					*/
+static void getFlashData(void);									/* FLASHデータを取得する				*/
+static void setFlashData(void);									/* FLASHデータを更新する				*/
+static void showRtcTime(void);									/* RTC時間を表示する					*/
+static void showRtcDateTime(void);								/* RTC日時を表示する					*/
+static void updateRtcDate(uint8_t *pu8_BcdData);				/* RTC日付を更新する					*/
+static void updateRtcTime(uint8_t *pu8_BcdData);				/* RTC時刻を更新する					*/
 static uint8_t convStrToBcd(const uint8_t *ps8_StrData, uint16_t u16_StrLen, uint8_t *pu8_BcdData);
-															/* 文字列をBCDデータに変換する			*/
+																/* 文字列をBCDデータに変換する			*/
+static void dmaTransferStart(void);								/* DMA転送を開始する					*/
+static void dmaTransferEndCheck(void);							/* DMA転送終了を確認する				*/
+static void DMA_CH2_TransferComplete(DMA_HandleTypeDef *hdma);	/* DMA_CH2転送完了コールバック関数		*/
+static void DMA_CH2_TransferError(DMA_HandleTypeDef *hdma);		/* DMA_CH2転送失敗コールバック関数		*/
+static void DMA_CH3_TransferComplete(DMA_HandleTypeDef *hdma);	/* DMA_CH3転送完了コールバック関数		*/
+static void DMA_CH3_TransferError(DMA_HandleTypeDef *hdma);		/* DMA_CH3転送失敗コールバック関数		*/
 
 /* Exported functions --------------------------------------------------------*/
 
 /**
-  * @brief  EXTI line detection callback.
-  * @param  GPIO_Pin Specifies the port pin connected to corresponding EXTI line.
+  * @brief EXTI line detection callback.
+  * @param GPIO_Pin Specifies the port pin connected to corresponding EXTI line.
   * @retval None
   */
 void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
@@ -89,6 +105,8 @@ void setup(void)
 	mem_set08(&u8s_FlashDataBuffer[0], 0x00, FLASH_DATA_SIZE);
 	mem_set08(&u8s_MessageData[0], 0x00, sizeof(u8s_MessageData));
 	mem_set08(&u8s_RtcStrData[0], 0x00, RTC_STR_SIZE);
+	mem_set32(&u32s_DmaData1[0], 0x00000000, DMA_DATA_SIZE);
+	mem_set32(&u32s_DmaData2[0], 0x00000000, DMA_DATA_SIZE);
 	u8s_DisplayState = ON;
 	u16s_PwmDutyValue = 0;
 	u16s_PwmDutyValue_prev = 0;
@@ -99,6 +117,10 @@ void setup(void)
 	u8s_RtcDateUpdate = OFF;
 	u8s_RtcTimeUpdate = OFF;
 	u32s_MpuWorkData = 0;
+	u8s_DmaCh2TransferComplete = OFF;
+	u8s_DmaCh2TransferError = OFF;
+	u8s_DmaCh3TransferComplete = OFF;
+	u8s_DmaCh3TransferError = OFF;
 
 	/* UART送信バッファに改行コードをセット */
 	u8s_TxBuffer[UART_RX_BLOCK_SIZE] = '\r';			/* CRコード					*/
@@ -286,6 +308,10 @@ void loop(void)
 		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"mpuw", UART_RX_BLOCK_SIZE) == 0) {
 			u32s_MpuRoData = 0xAA55AA55;
 		}
+		/* DMA転送を開始する */
+		else if (mem_cmp08(&u8s_RxBuffer[0], (uint8_t *)"dma0", UART_RX_BLOCK_SIZE) == 0) {
+			dmaTransferStart();
+		}
 	}
 
 	for (u16_Index = 0; u16_Index < ADC_CHANNEL_MAX; u16_Index++) {
@@ -344,10 +370,14 @@ void loop(void)
 		pwmSetDuty(PWM_CHANNEL_TIM3_CH1, u16s_PwmDutyValue);
 	}
 
+	/* 外部割込み0発生フラグがONの場合 */
 	if (u8s_Exti0Event == ON) {
 		uartEchoStrln("Exti0Falling!");
 		u8s_Exti0Event = OFF;
 	}
+
+	/* DMA転送終了を確認する */
+	dmaTransferEndCheck();
 
 	/* 前回値を更新 */
 	u16s_PwmDutyValue_prev = u16s_PwmDutyValue;
@@ -555,4 +585,107 @@ static uint8_t convStrToBcd(const uint8_t *ps8_StrData, uint16_t u16_StrLen, uin
 		}
 	}
 	return u8_RetCode;
+}
+
+/**
+  * @brief DMA転送を開始する
+  * @param None
+  * @retval None
+  */
+static void dmaTransferStart(void)
+{
+	/* DMAコールバック関数を登録 */
+	HAL_DMA_RegisterCallback(&hdma_memtomem_dma1_channel2, HAL_DMA_XFER_CPLT_CB_ID, DMA_CH2_TransferComplete);
+	HAL_DMA_RegisterCallback(&hdma_memtomem_dma1_channel2, HAL_DMA_XFER_ERROR_CB_ID, DMA_CH2_TransferError);
+	HAL_DMA_RegisterCallback(&hdma_memtomem_dma1_channel3, HAL_DMA_XFER_CPLT_CB_ID, DMA_CH3_TransferComplete);
+	HAL_DMA_RegisterCallback(&hdma_memtomem_dma1_channel3, HAL_DMA_XFER_ERROR_CB_ID, DMA_CH3_TransferError);
+
+	/* DMA転送(割り込み)を開始 */
+	if (HAL_DMA_Start_IT(&hdma_memtomem_dma1_channel2, DMA_DATA0_ADDR, (uint32_t)&u32s_DmaData1[0], DMA_DATA_SIZE * 4) != HAL_OK) {
+		/* Transfer Error */
+		Error_Handler();
+	}
+	if (HAL_DMA_Start_IT(&hdma_memtomem_dma1_channel3, (uint32_t)&u32s_DmaData1[0], (uint32_t)&u32s_DmaData2[0], DMA_DATA_SIZE * 4) != HAL_OK) {
+		/* Transfer Error */
+		Error_Handler();
+	}
+}
+
+/**
+  * @brief DMA転送終了を確認する
+  * @param None
+  * @retval None
+  */
+static void dmaTransferEndCheck(void)
+{
+	/* DMA_CH2転送完了フラグがONの場合 */
+	if (u8s_DmaCh2TransferComplete == ON) {
+		u8s_DmaCh2TransferComplete = OFF;
+		if (mem_cmp32(DMA_DATA0_ADDR, &u32s_DmaData1[0], DMA_DATA_SIZE) == 0) {
+			uartEchoStrln("DMA_CH2 Verify OK!");
+		}
+		else {
+			uartEchoStrln("DMA_CH2 Verify NG!");
+		}
+	}
+	/* DMA_CH2転送失敗フラグがONの場合 */
+	if (u8s_DmaCh2TransferError == ON) {
+		u8s_DmaCh2TransferError = OFF;
+		uartEchoStrln("DMA_CH2 Error!");
+	}
+	/* DMA_CH3転送完了フラグがONの場合 */
+	if (u8s_DmaCh3TransferComplete == ON) {
+		u8s_DmaCh3TransferComplete = OFF;
+		if (mem_cmp32(&u32s_DmaData1[0], &u32s_DmaData2[0], DMA_DATA_SIZE) == 0) {
+			uartEchoStrln("DMA_CH3 Verify OK!");
+		}
+		else {
+			uartEchoStrln("DMA_CH3 Verify NG!");
+		}
+	}
+	/* DMA_CH3転送失敗フラグがONの場合 */
+	if (u8s_DmaCh3TransferError == ON) {
+		u8s_DmaCh3TransferError = OFF;
+		uartEchoStrln("DMA_CH3 Error!");
+	}
+}
+
+/**
+  * @brief DMA_CH2転送完了コールバック関数
+  * @param hdma DMAハンドルのポインタ
+  * @retval None
+  */
+static void DMA_CH2_TransferComplete(DMA_HandleTypeDef *hdma)
+{
+	u8s_DmaCh2TransferComplete = ON;
+}
+
+/**
+  * @brief  DMA_CH2転送失敗コールバック関数
+  * @param hdma DMAハンドルのポインタ
+  * @retval None
+  */
+static void DMA_CH2_TransferError(DMA_HandleTypeDef *hdma)
+{
+	u8s_DmaCh2TransferError = ON;
+}
+
+/**
+  * @brief DMA_CH3転送完了コールバック関数
+  * @param hdma DMAハンドルのポインタ
+  * @retval None
+  */
+static void DMA_CH3_TransferComplete(DMA_HandleTypeDef *hdma)
+{
+	u8s_DmaCh3TransferComplete = ON;
+}
+
+/**
+  * @brief  DMA_CH3転送失敗コールバック関数
+  * @param hdma DMAハンドルのポインタ
+  * @retval None
+  */
+static void DMA_CH3_TransferError(DMA_HandleTypeDef *hdma)
+{
+	u8s_DmaCh3TransferError = ON;
 }

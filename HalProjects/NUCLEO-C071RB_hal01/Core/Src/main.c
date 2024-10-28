@@ -59,6 +59,8 @@ TIM_HandleTypeDef htim14;
 
 UART_HandleTypeDef huart2;
 
+DMA_HandleTypeDef hdma_memtomem_dma1_channel2;
+DMA_HandleTypeDef hdma_memtomem_dma1_channel3;
 /* USER CODE BEGIN PV */
 volatile static uint32_t u32s_CycleTimeCounter;		/* 周期時間カウンター			*/
 /* USER CODE END PV */
@@ -729,6 +731,9 @@ static void MX_USART2_UART_Init(void)
 
 /**
   * Enable DMA controller clock
+  * Configure DMA for memory to memory transfers
+  *   hdma_memtomem_dma1_channel2
+  *   hdma_memtomem_dma1_channel3
   */
 static void MX_DMA_Init(void)
 {
@@ -736,10 +741,43 @@ static void MX_DMA_Init(void)
   /* DMA controller clock enable */
   __HAL_RCC_DMA1_CLK_ENABLE();
 
+  /* Configure DMA request hdma_memtomem_dma1_channel2 on DMA1_Channel2 */
+  hdma_memtomem_dma1_channel2.Instance = DMA1_Channel2;
+  hdma_memtomem_dma1_channel2.Init.Request = DMA_REQUEST_MEM2MEM;
+  hdma_memtomem_dma1_channel2.Init.Direction = DMA_MEMORY_TO_MEMORY;
+  hdma_memtomem_dma1_channel2.Init.PeriphInc = DMA_PINC_ENABLE;
+  hdma_memtomem_dma1_channel2.Init.MemInc = DMA_MINC_ENABLE;
+  hdma_memtomem_dma1_channel2.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+  hdma_memtomem_dma1_channel2.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+  hdma_memtomem_dma1_channel2.Init.Mode = DMA_NORMAL;
+  hdma_memtomem_dma1_channel2.Init.Priority = DMA_PRIORITY_LOW;
+  if (HAL_DMA_Init(&hdma_memtomem_dma1_channel2) != HAL_OK)
+  {
+    Error_Handler( );
+  }
+
+  /* Configure DMA request hdma_memtomem_dma1_channel3 on DMA1_Channel3 */
+  hdma_memtomem_dma1_channel3.Instance = DMA1_Channel3;
+  hdma_memtomem_dma1_channel3.Init.Request = DMA_REQUEST_MEM2MEM;
+  hdma_memtomem_dma1_channel3.Init.Direction = DMA_MEMORY_TO_MEMORY;
+  hdma_memtomem_dma1_channel3.Init.PeriphInc = DMA_PINC_ENABLE;
+  hdma_memtomem_dma1_channel3.Init.MemInc = DMA_MINC_ENABLE;
+  hdma_memtomem_dma1_channel3.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+  hdma_memtomem_dma1_channel3.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+  hdma_memtomem_dma1_channel3.Init.Mode = DMA_NORMAL;
+  hdma_memtomem_dma1_channel3.Init.Priority = DMA_PRIORITY_MEDIUM;
+  if (HAL_DMA_Init(&hdma_memtomem_dma1_channel3) != HAL_OK)
+  {
+    Error_Handler( );
+  }
+
   /* DMA interrupt init */
   /* DMA1_Channel1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* DMA1_Channel2_3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
 
 }
 
