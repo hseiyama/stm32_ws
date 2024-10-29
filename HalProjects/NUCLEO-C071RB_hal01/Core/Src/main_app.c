@@ -105,8 +105,8 @@ void setup(void)
 	mem_set08(&u8s_FlashDataBuffer[0], 0x00, FLASH_DATA_SIZE);
 	mem_set08(&u8s_MessageData[0], 0x00, sizeof(u8s_MessageData));
 	mem_set08(&u8s_RtcStrData[0], 0x00, RTC_STR_SIZE);
-	mem_set32(&u32s_DmaData1[0], 0x00000000, DMA_DATA_SIZE);
-	mem_set32(&u32s_DmaData2[0], 0x00000000, DMA_DATA_SIZE);
+	mem_set32(&u32s_DmaData1[0], 0xFFFFFFFF, DMA_DATA_SIZE);
+	mem_set32(&u32s_DmaData2[0], 0xFFFFFFFF, DMA_DATA_SIZE);
 	u8s_DisplayState = ON;
 	u16s_PwmDutyValue = 0;
 	u16s_PwmDutyValue_prev = 0;
@@ -601,11 +601,11 @@ static void dmaTransferStart(void)
 	HAL_DMA_RegisterCallback(&hdma_memtomem_dma1_channel3, HAL_DMA_XFER_ERROR_CB_ID, DMA_CH3_TransferError);
 
 	/* DMA転送(割り込み)を開始 */
-	if (HAL_DMA_Start_IT(&hdma_memtomem_dma1_channel2, DMA_DATA0_ADDR, (uint32_t)&u32s_DmaData1[0], DMA_DATA_SIZE * 4) != HAL_OK) {
+	if (HAL_DMA_Start_IT(&hdma_memtomem_dma1_channel2, DMA_DATA0_ADDR, (uint32_t)&u32s_DmaData1[0], DMA_DATA_SIZE) != HAL_OK) {
 		/* Transfer Error */
 		Error_Handler();
 	}
-	if (HAL_DMA_Start_IT(&hdma_memtomem_dma1_channel3, (uint32_t)&u32s_DmaData1[0], (uint32_t)&u32s_DmaData2[0], DMA_DATA_SIZE * 4) != HAL_OK) {
+	if (HAL_DMA_Start_IT(&hdma_memtomem_dma1_channel3, (uint32_t)&u32s_DmaData1[0], (uint32_t)&u32s_DmaData2[0], DMA_DATA_SIZE) != HAL_OK) {
 		/* Transfer Error */
 		Error_Handler();
 	}
@@ -621,7 +621,7 @@ static void dmaTransferEndCheck(void)
 	/* DMA_CH2転送完了フラグがONの場合 */
 	if (u8s_DmaCh2TransferComplete == ON) {
 		u8s_DmaCh2TransferComplete = OFF;
-		if (mem_cmp32(DMA_DATA0_ADDR, &u32s_DmaData1[0], DMA_DATA_SIZE) == 0) {
+		if (mem_cmp32((uint32_t *)DMA_DATA0_ADDR, &u32s_DmaData1[0], DMA_DATA_SIZE) == 0) {
 			uartEchoStrln("DMA_CH2 Verify OK!");
 		}
 		else {
