@@ -22,7 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,7 +33,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define MSG_DATA_SIZE (64)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,8 +51,16 @@ const osThreadAttr_t defaultTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
   .stack_size = 128 * 4
 };
+/* Definitions for myTask02 */
+osThreadId_t myTask02Handle;
+const osThreadAttr_t myTask02_attributes = {
+  .name = "myTask02",
+  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 128 * 4
+};
 /* USER CODE BEGIN PV */
-
+static uint8_t u8s_MessageData[MSG_DATA_SIZE];
+static uint16_t u16s_CountData;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -59,6 +68,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 void StartDefaultTask(void *argument);
+void StartTask02(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -86,7 +96,8 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+	memset(&u8s_MessageData[0], 0x00, MSG_DATA_SIZE);
+	u16s_CountData = 0;
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -125,6 +136,9 @@ int main(void)
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* creation of myTask02 */
+  myTask02Handle = osThreadNew(StartTask02, NULL, &myTask02_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -299,6 +313,31 @@ void StartDefaultTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_StartTask02 */
+/**
+* @brief Function implementing the myTask02 thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartTask02 */
+void StartTask02(void *argument)
+{
+  /* USER CODE BEGIN StartTask02 */
+	/* Infinite loop */
+	for(;;) {
+		HAL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);
+		sprintf((char *)&u8s_MessageData[0], "Hello FreeRTOS!! (%d)\r\n", u16s_CountData);
+		if (HAL_UART_Transmit_IT(&huart2, &u8s_MessageData[0], strlen((char *)&u8s_MessageData[0])) != HAL_OK) {
+			/* Transmitting Error */
+			Error_Handler();
+		}
+		u16s_CountData++;
+
+		osDelay(1000);
+	}
+  /* USER CODE END StartTask02 */
 }
 
 /**
