@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "printf.h"
+#include "rtos.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,6 +58,31 @@ static void MX_USART2_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+/* ユーザスレッド */
+static int test(int argc, char *argv[])
+{  
+	while (1) {
+		printf("Hello\n");
+	}
+	return 0;
+}
+
+static int demo(int argc, char *argv[])
+{  
+	while (1) {
+		printf("Money\n");
+	}
+	return 0;
+}
+
+static int proto(int argc, char *argv[])
+{  
+	while (1) {
+		printf("Gold\n");
+	}
+	return 0;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -90,22 +116,33 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+	printf("main boot succeed!\n");
+
+	__enable_irq(); // enable interrupt
+
+	RtosInit();
+	RtosThreadCreate((rtos_func_t)test, "test", 0, 0x100, 0, NULL);
+	RtosThreadCreate((rtos_func_t)demo, "demo", 3, 0x100, 0, NULL);
+	RtosThreadCreate((rtos_func_t)proto, "proto", 6, 0x100, 0, NULL);
+
+	/* OSの動作開始 */  
+	RtosStart();  
+	/* ここには戻ってこない */  
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	HAL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);
-	if (HAL_UART_Transmit(&huart2, (uint8_t *)"Test Uart.\r\n", 12, 10) != HAL_OK) {
-		Error_Handler();
+		HAL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);
+		if (HAL_UART_Transmit(&huart2, (uint8_t *)"Test Uart.\r\n", 12, 10) != HAL_OK) {
+			Error_Handler();
+		}
+		HAL_Delay(1000);
 	}
-	HAL_Delay(1000);
-  }
   /* USER CODE END 3 */
 }
 
