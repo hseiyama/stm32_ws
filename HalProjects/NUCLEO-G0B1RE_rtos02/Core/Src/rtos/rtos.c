@@ -238,20 +238,22 @@ void PendSV_Handler(void)
             "mrs    r12,psp;"           // R12にPSPの値をコピー
 //          "stmdb  r12!,{r4-r11};"     // 自動退避されないR4～R11を退避
             "mov    r0,r12;"            // 自動退避されないR4～R11を退避
-            "stmea  r0!,{r4-r7};"
+            "sub    r0,#32;"
+            "stmia  r0!,{r4-r7};"
             "mov    r4,r8;"
             "mov    r5,r9;"
             "mov    r6,r10;"
             "mov    r7,r11;"
-            "stmea  r0!,{r4-r7};"
+            "stmia  r0!,{r4-r7};"
+            "sub    r0,#32;"
             "mov    r12,r0;"
 //          "movw   r2,#:lower16:current;"  // *(current->context) = R12;
 //          "movt   r2,#:upper16:current;"
             "ldr    r2,currentConst2;"      // *(current->context) = R12;
             "ldr    r0,[r2,#0];"
 //          "str    r12,[r0,#48];"
+            "mov    r1,r12;"
             "str    r1,[r0,#48];"
-            "mov    r12,r1;"
          );
 
    // 次スレッドのスケジューリング
@@ -274,12 +276,15 @@ void PendSV_Handler(void)
 
 //         "ldmia   r12!,{r4-r11};"     // R4～R11を復帰
            "mov     r0,r12;"            // R4～R11を復帰
+           "add     r0,#16;"
            "ldmia   r0!,{r4-r7};"
            "mov     r8,r4;"
            "mov     r9,r5;"
            "mov     r10,r6;"
            "mov     r11,r7;"
+           "sub     r0,#32;"
            "ldmia   r0!,{r4-r7};"
+           "add     r0,#16;"
            "mov     r12,r0;"
 
            "msr     psp,r12;"           // PSP = R12;
