@@ -27,7 +27,7 @@ extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32g4xx_hal.h"
+#include "stm32g0xx_hal.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -41,7 +41,7 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-
+extern UART_HandleTypeDef huart2;
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
@@ -57,14 +57,14 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define T_SWDIO_Pin GPIO_PIN_13
-#define T_SWDIO_GPIO_Port GPIOA
-#define T_SWCLK_Pin GPIO_PIN_14
-#define T_SWCLK_GPIO_Port GPIOA
-#define T_SWO_Pin GPIO_PIN_3
-#define T_SWO_GPIO_Port GPIOB
-#define LD2_Pin GPIO_PIN_8
-#define LD2_GPIO_Port GPIOB
+#define T_NRST_Pin GPIO_PIN_2
+#define T_NRST_GPIO_Port GPIOF
+#define LD3_Pin GPIO_PIN_6
+#define LD3_GPIO_Port GPIOC
+#define T_JTMS_Pin GPIO_PIN_13
+#define T_JTMS_GPIO_Port GPIOA
+#define T_JTCK_Pin GPIO_PIN_14
+#define T_JTCK_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 
