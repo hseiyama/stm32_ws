@@ -1,6 +1,6 @@
 /*
 ===============================================================================
- Name        : main.c
+ Name        : main_rtos.c
  Author      : 
  Version     :
  Copyright   : Copyright (C)
@@ -9,7 +9,8 @@
 */
 
 //#ifdef __USE_CMSIS
-#include "LPC13xx.h"
+//#include "LPC13xx.h"
+#include "main.h"
 //#endif
 
 // TODO: insert other include files here
@@ -19,7 +20,7 @@
 
 
 //
-// Cortex-M3����O�������Ɏ����I��PUSH���郌�W�X�^��
+// Cortex-M3が例外発生時に自動的にPUSHするレジスタ類
 //
 struct ESTK_STRUC {
 	unsigned int	r_r0;
@@ -27,17 +28,17 @@ struct ESTK_STRUC {
 	unsigned int	r_r2;
 	unsigned int	r_r3;
 	unsigned int	r_r12;
-				// r13��SP
-	unsigned int	r_lr;	// r14	�X���b�h����LR
+				// r13はSP
+	unsigned int	r_lr;	// r14	スレッド中のLR
 	unsigned int	r_pc;	// r15
 	unsigned int	r_xpsr;
 };
 typedef struct ESTK_STRUC	ESTK;
 
 //
-// �^�X�N�̃X�^�b�N�i�^�X�N����X�P�W���[����Ԃ̎��̃X�^�b�N��̃f�[�^�j
+// タスクのスタック（タスクが非スケジュール状態の時のスタック上のデータ）
 //
-// r13��SP�Ȃ̂ŃX�^�b�N�ɂ͐ς܂Ȃ���TCB�ŊǗ�����
+// r13はSPなのでスタックには積まないでTCBで管理する
 //
 struct TSTK_STRUC {
 	unsigned int	r_r4;
@@ -49,37 +50,37 @@ struct TSTK_STRUC {
 	unsigned int	r_r10;
 	unsigned int	r_r11;
 
-//------����������Cortex-M3�������I�ɐςޕ�------
+//------ここから先はCortex-M3が自動的に積む分------
 	unsigned int	r_r0;
 	unsigned int	r_r1;
 	unsigned int	r_r2;
 	unsigned int	r_r3;
 	unsigned int	r_r12;
-	unsigned int	r_lr;	// r14	�X���b�h����LR
+	unsigned int	r_lr;	// r14	スレッド中のLR
 	unsigned int	r_pc;	// r15
 	unsigned int	r_xpsr;
 };
 typedef struct TSTK_STRUC TSTK;
 
-#define	TSTKSIZE	((sizeof (struct TSTK_STRUC))/sizeof (int))	// �e�^�X�N����X�P�W���[�����Ɏg�p����X�^�b�N�T�C�Y
-#define	ESTKSIZE	((sizeof (struct ESTK_STRUC))/sizeof (int))	// Cortex-M3����O�������Ɏ����I�Ɏg�p����X�^�b�N�T�C�Y
+#define	TSTKSIZE	((sizeof (struct TSTK_STRUC))/sizeof (int))	// 各タスクが非スケジュール時に使用するスタックサイズ
+#define	ESTKSIZE	((sizeof (struct ESTK_STRUC))/sizeof (int))	// Cortex-M3が例外発生時に自動的に使用するスタックサイズ
 #define	UPUSHSIZE	(TSTKSIZE-ESTKSIZE)
 
 //
-//�@�^�X�N�̏�ԃR�[�h
+//　タスクの状態コード
 //
 #define	STATE_FREE	0x00
 #define	STATE_IDLE	0x01
 #define	STATE_READY	0x02
 #define	STATE_SLEEP	0x03
 
-#define	EOQ	0xff	// End Of Queue�F�L���[�̍Ō�ł��邱�Ƃ������B
+#define	EOQ	0xff	// End Of Queue：キューの最後であることを示す。
 
 #define	MAX_TASKNUM	8
 
 
 //
-// TCB�iTask Control Block)�̒�`
+// TCB（Task Control Block)の定義
 //
 struct TCTRL_STRUC {
 	unsigned char	link;
@@ -90,25 +91,25 @@ struct TCTRL_STRUC {
 	unsigned int	param1;
 	unsigned int	param2;
 };
-typedef struct TCTRL_STRUC TCTRL;	// typedef����ƌ����ڂ�������Ɗi�D�ǂ��������Ă������x
-TCTRL	tcb[MAX_TASKNUM];	// TCB���^�X�N�����m��
+typedef struct TCTRL_STRUC TCTRL;	// typedefすると見た目がちょっと格好良いかもっていう程度
+TCTRL	tcb[MAX_TASKNUM];	// TCBをタスク数分確保
 
-#define	STKSIZE	64			// �^�X�N�p�X�^�b�N�T�C�Y�i64���[�h�F256�o�C�g�j
-unsigned int	stk_task[MAX_TASKNUM][STKSIZE];	// �^�X�N�p�X�^�b�N�G���A
+#define	STKSIZE	64			// タスク用スタックサイズ（64ワード：256バイト）
+unsigned int	stk_task[MAX_TASKNUM][STKSIZE];	// タスク用スタックエリア
 
 
 //
-// �Z�}�t�H
+// セマフォ
 //
 #define	MAX_SEMA	8
 unsigned char semadat[MAX_SEMA];
 
 //
-// ���b�Z�[�W�u���b�N
+// メッセージブロック
 //
-// ���b�Z�[�W���L���[�ŊǗ�����ق����������i�D���ǂ��̂����ǂ��A
-// ����̓��b�Z�[�W�u���b�N�̑��������Ȃ��̂ŁA�����̒P������D��
-// ���āA����S���b�Z�[�W�u���b�N���X�L�������邱�Ƃɂ���
+// メッセージもキューで管理するほうが効率も格好も良いのだけども、
+// 今回はメッセージブロックの総数が少ないので、実装の単純化を優先
+// して、毎回全メッセージブロックをスキャンすることにした
 //
 #define	MAX_MSGBLK	8
 struct MSGBLK_STRUC {
@@ -122,87 +123,87 @@ MSGBLK msgblk[MAX_MSGBLK];
 
 
 
-static LPC_GPIO_TypeDef (* const LPC_GPIO[4]) = { LPC_GPIO0, LPC_GPIO1, LPC_GPIO2, LPC_GPIO3 };
-#define	LED_PORT	0
-#define	LED_BIT		7
+//static LPC_GPIO_TypeDef (* const LPC_GPIO[4]) = { LPC_GPIO0, LPC_GPIO1, LPC_GPIO2, LPC_GPIO3 };
+//#define	LED_PORT	0
+//#define	LED_BIT		7
 
 
 
 //===============================================
-//= 		TCB�֌W����			=
+//= 		TCB関係処理			=
 //===============================================
-unsigned char	q_pending[2];	// �����҂��^�X�N�iON/OFF�����ȂǂŎg�p�j
-unsigned char	q_ready;	// �N�����
-unsigned char	q_sleep;	// �X���[�v��ԁi�^�C�}�҂��j
+unsigned char	q_pending[2];	// 処理待ちタスク（ON/OFF処理などで使用）
+unsigned char	q_ready;	// 起動状態
+unsigned char	q_sleep;	// スリープ状態（タイマ待ち）
 
 unsigned char task_start;
-unsigned char c_tasknum;	// ���݃X�P�W���[�����̃^�X�N�ԍ�
+unsigned char c_tasknum;	// 現在スケジュール中のタスク番号
 TCTRL	*c_task;
 
 
 //
-// �L���[�̍Ō�Ɏw�肳�ꂽTCB���Ȃ�
+// キューの最後に指定されたTCBをつなぐ
 //
 unsigned char tcbq_append(unsigned char *queue, unsigned char tcbnum)
 {
 	unsigned char ctasknum, ptasknum;
-	if (tcbnum == EOQ)			// EOQ��������Ȃɂ����Ȃ�
+	if (tcbnum == EOQ)			// EOQだったらなにもしない
 		return(EOQ);
-	if ((ctasknum = *queue) == EOQ) {	// ���ܐڑ�����Ă����͖���
-		*queue = tcbnum;		// �^����ꂽTCB���Ȃ�
+	if ((ctasknum = *queue) == EOQ) {	// いま接続されている先は無い
+		*queue = tcbnum;		// 与えられたTCBをつなぐ
 	} else {
-		do {				// �Ō��T��
-			ptasknum = ctasknum;	// PreviousTCB��CurrentTCB�ԍ���ۑ�
-		} while((ctasknum = tcb[ptasknum].link) != EOQ);	// ptasknum���Ō�H
-		tcb[ptasknum].link = tcbnum;	// �Ō��TCB�Ɏw�肳�ꂽTCB���Ȃ�
+		do {				// 最後を探す
+			ptasknum = ctasknum;	// PreviousTCBにCurrentTCB番号を保存
+		} while((ctasknum = tcb[ptasknum].link) != EOQ);	// ptasknumが最後？
+		tcb[ptasknum].link = tcbnum;	// 最後のTCBに指定されたTCBをつなぐ
 	}
-	tcb[tcbnum].link = EOQ;			// �L���[�̏I���ɂȂ�̂ŁAEOQ
+	tcb[tcbnum].link = EOQ;			// キューの終わりになるので、EOQ
 	return(tcbnum);
 }
 
 //
-// �L���[�̐擪�����o��
+// キューの先頭を取り出す
 //
 unsigned char tcbq_get(unsigned char *queue)
 {
 	unsigned char tcbnum;
-	if ((tcbnum = *queue) != EOQ)		// �L���[�̐擪�����o��
-		*queue = tcb[tcbnum].link;	// EOQ�łȂ��Ȃ�A�����N��ɂȂ��Ȃ���
-	return(tcbnum);				// �����A�L���[�̐擪��EOQ�Ȃ�EOQ���Ԃ邾��
+	if ((tcbnum = *queue) != EOQ)		// キューの先頭を取り出す
+		*queue = tcb[tcbnum].link;	// EOQでないなら、リンク先につなぎなおし
+	return(tcbnum);				// もし、キューの先頭がEOQならEOQが返るだけ
 }
 
 //
-// �w�肳�ꂽTCB���L���[����O��
+// 指定されたTCBをキューから外す
 //
 unsigned char tcbq_remove(unsigned char *queue, unsigned char tcbnum)
 {
 	unsigned char ctasknum,ptasknum;
 	ctasknum = *queue;
-	if (tcbnum == EOQ)			// EOQ��������Ȃɂ����Ȃ�
+	if (tcbnum == EOQ)			// EOQだったらなにもしない
 		return(EOQ);
-	if (ctasknum == EOQ)	// �L���[�ɉ����Ȃ����ĂȂ�
-		return(EOQ);	// �Ȃ�EOQ�ŏI��
-	if (ctasknum == tcbnum) {	//�@�����Ȃ�擪
-		*queue = tcb[tcbnum].link;	// �Ȃ��ς���
-		return(ctasknum);		// �I��
+	if (ctasknum == EOQ)	// キューに何もつながってない
+		return(EOQ);	// ならEOQで終了
+	if (ctasknum == tcbnum) {	//　いきなり先頭
+		*queue = tcb[tcbnum].link;	// つなぎ変えて
+		return(ctasknum);		// 終了
 	}
-	do {						// �}�b�`������̂�T�����[�v
-		ptasknum = ctasknum;			// Previous��Current�̒l���R�s�[
-		if ((ctasknum = tcb[ptasknum].link) != EOQ)	// �����N�悪EOQ��������
-			return(EOQ);			// EOQ��Ԃ�
-	} while(ctasknum != tcbnum);			// �����N�悪��v����܂Ń��[�v
-	tcb[ptasknum].link = tcb[ctasknum].link;	// ctasknum�̃����N���q���ւ�
+	do {						// マッチするものを探すループ
+		ptasknum = ctasknum;			// PreviousにCurrentの値をコピー
+		if ((ctasknum = tcb[ptasknum].link) != EOQ)	// リンク先がEOQだったら
+			return(EOQ);			// EOQを返す
+	} while(ctasknum != tcbnum);			// リンク先が一致するまでループ
+	tcb[ptasknum].link = tcb[ctasknum].link;	// ctasknumのリンクを繋ぎ替え
 	return(ctasknum);
 }
 
 //
-// �^�X�NON����
+// タスクON処理
 //
 unsigned char process_taskon(unsigned char tasknum)
 {
 	unsigned char c;
 	c = tcb[tasknum].state;
-	if ((c == STATE_FREE) || (c == STATE_IDLE)) {		// Free��Idle�̂��̐�p
+	if ((c == STATE_FREE) || (c == STATE_IDLE)) {		// FreeかIdleのもの専用
 		tcb[tasknum].state = STATE_READY;
 		tcbq_append(&q_ready,tasknum);
 		return(tasknum);
@@ -211,8 +212,8 @@ unsigned char process_taskon(unsigned char tasknum)
 }
 
 //
-// �^�X�NOFF����
-//�@�@�w�肳�ꂽ�^�X�N��READY�܂���SLEEP��Ԃł���΁A�͂�����IDLE�X�e�[�g�ɂ���
+// タスクOFF処理
+//　　指定されたタスクがREADYまたはSLEEP状態であれば、はずしてIDLEステートにする
 //
 unsigned char process_taskoff(unsigned char tasknum)
 {
@@ -232,19 +233,19 @@ unsigned char process_taskoff(unsigned char tasknum)
 }
 
 //
-// �X���[�v����
+// スリープ処理
 //
 void process_sleep(void)
 {
 	unsigned char tasknum;
 	tasknum = q_sleep;
-	while(tasknum != EOQ) {		// �L���[�̍Ō�܂ŃX�L����
-		if (tcb[tasknum].param1 == 0) {	//�@�^�C���A�b�v����
-			tcbq_remove(&q_sleep, tasknum);	// Sleep_Q����O��
-			tcb[tasknum].state = STATE_READY;	// READY��Ԃɂ���
-			tcbq_append(&q_ready, tasknum);	// Ready_Q�ɂȂ�
+	while(tasknum != EOQ) {		// キューの最後までスキャン
+		if (tcb[tasknum].param1 == 0) {	//　タイムアップした
+			tcbq_remove(&q_sleep, tasknum);	// Sleep_Qから外す
+			tcb[tasknum].state = STATE_READY;	// READY状態にする
+			tcbq_append(&q_ready, tasknum);	// Ready_Qにつなぐ
 		} else {
-			tcb[tasknum].param1--;	// �f�N�������g
+			tcb[tasknum].param1--;	// デクリメント
 		}
 		tasknum = tcb[tasknum].link;
 	}
@@ -252,12 +253,12 @@ void process_sleep(void)
 
 
 //===============================================
-//= ���b�Z�[�W�u���b�N�֘A����			=
+//= メッセージブロック関連処理			=
 //===============================================
 unsigned char q_msgblk;
 
 //
-// �V�X�e���^�C�}���荞�݂̏���
+// システムタイマ割り込みの処理
 //
 unsigned char rq_timer;
 
@@ -282,51 +283,51 @@ void SysTick_Handler()
 
 unsigned int pendsv_count;
 // 
-// PendSV�̃n���h���i�^�X�N�X�C�b�`���O�̎��s�j
+// PendSVのハンドラ（タスクスイッチングの実行）
 //
-// �Ƃ���ŁA
+// ところで、
 // __attribute__ ((naked));
-// �́A
+// は、
 // indicate that the specified function does not need prologue/epilogue
 // sequences generated by the compiler
-// �Ƃ������ƂŁA�R���p�C���ɂ�郌�W�X�^�ޔ��Ȃǂ��s�킹�Ȃ����߂̃A�g���r���[�g�B
-// �R���p�C���Ŏg���X�^�b�N��̃��[�N�̈�Ȃǂ������m�ۂ���R�[�h���������Ȃ��̂�
-// asm()�̒��ŏ����Ă��Ȃ���΂Ȃ�Ȃ��B
-// �R���p�C�����ǂꂾ���X�^�b�N�̈���g���̂��͎���__attribute__���O���ăR���p�C��
-// ���Ă݂Ċm�F���邵���Ȃ��B
+// ということで、コンパイラによるレジスタ退避などを行わせないためのアトリビュート。
+// コンパイラで使うスタック上のワーク領域なども自動確保するコード生成をしないので
+// asm()の中で書いてやらなければならない。
+// コンパイラがどれだけスタック領域を使うのかは実際__attribute__を外してコンパイル
+// してみて確認するしかない。
 //
 unsigned char swstart = 0;
 void schedule(void)
 {
 	unsigned char ctasknum,ntasknum;
-	// �f�o�b�O�p�ɃX�C�b�`���O�񐔂��J�E���g
+	// デバッグ用にスイッチング回数をカウント
 	pendsv_count++;
-	// c_task��؂�ւ��i�^�X�N�X�C�b�`���O�j
+	// c_taskを切り替え（タスクスイッチング）
 	if (swstart) {
 		if (rq_timer) {
 			process_sleep();
 			rq_timer = 0;
 		}
-		if ((ctasknum = q_pending[0]) !=EOQ) {		// Pending����Ă���^�X�N���䏈��������
+		if ((ctasknum = q_pending[0]) !=EOQ) {		// Pendingされているタスク制御処理がある
 			switch(q_pending[1]) {
-				case STATE_READY:		// Ready��Ԃɂ�����
-					process_taskon(ctasknum);	// TASKON����������
+				case STATE_READY:		// Ready状態にしたい
+					process_taskon(ctasknum);	// TASKON処理をする
 					break;
-				case STATE_IDLE:		// Idle��Ԃɂ�����
+				case STATE_IDLE:		// Idle状態にしたい
 					process_taskoff(ctasknum);
 					break;
 				default:
 					break;
 			}
-			q_pending[0] = EOQ;			// ���������̂ŁA�N���A
+			q_pending[0] = EOQ;			// 処理したので、クリア
 		}
-		ctasknum = c_tasknum;			// ���܂ŃX�P�W���[�����Ă����^�X�N�ԍ���ޔ�
-		ntasknum = tcbq_get(&q_ready);		// Ready_Q������o��
-		if (ntasknum == EOQ) {			// Ready_Q������
-			if (c_tasknum == EOQ)		// �X�P�W���[�����Ă������̂��Ȃ��I�H�H
-				c_tasknum = 0;		// ���肦�Ȃ����ǁA0�ɂ��Ă���
-		} else {					// Ready_Q�ɂȂ����Ă���
-			c_tasknum = ntasknum;			// Ready_Q������o�����̂��X�P�W���[����Ԃɂ���
+		ctasknum = c_tasknum;			// 今までスケジュールしていたタスク番号を退避
+		ntasknum = tcbq_get(&q_ready);		// Ready_Qから取り出す
+		if (ntasknum == EOQ) {			// Ready_Qが無い
+			if (c_tasknum == EOQ)		// スケジュールしていたものもない！？？
+				c_tasknum = 0;		// ありえないけど、0にしておく
+		} else {					// Ready_Qにつながっていた
+			c_tasknum = ntasknum;			// Ready_Qから取り出したのをスケジュール状態にする
 			switch(tcb[ctasknum].state) {
 				case	STATE_READY:	tcbq_append(&q_ready, ctasknum); break;
 				case	STATE_SLEEP:	tcbq_append(&q_sleep, ctasknum); break;
@@ -346,33 +347,33 @@ void schedule(void)
 void PendSV_Handler(void) __attribute__ ((naked));
 void PendSV_Handler()
 {
-	// �O�������ł́A
-	// �E�����ޔ�����Ȃ��ėp���W�X�^��R12��stmdb�iDec. Before)���g����PSP��ɑޔ�
-	// �Ec_task�i���ݎ��s���̃^�X�N��TCB�������Ă���j��R12��ޔ�
-	// �����s
-	asm(						// R12�����[�N�p�X�^�b�N�Ƃ��ė��p
-		"mrs	r12,psp\n\t"			// R12��PSP�̒l���R�s�[
+	// 前半部分では、
+	// ・自動退避されない汎用レジスタをR12でstmdb（Dec. Before)を使ってPSP上に退避
+	// ・c_task（現在実行中のタスクのTCBをさしている）にR12を退避
+	// を実行
+	asm(						// R12をワーク用スタックとして利用
+		"mrs	r12,psp\n\t"			// R12にPSPの値をコピー
 //		"stmdb	r12!,{r4-r11,lr}\n\t"
-		"stmdb	r12!,{r4-r11}\n\t"		// �����ޔ�����Ȃ�R4�`R11��ޔ�
+		"stmdb	r12!,{r4-r11}\n\t"		// 自動退避されないR4～R11を退避
 		"movw	r2,#:lower16:c_task\n\t"	// *(ctask->sp) = R12;
 		"movt	r2,#:upper16:c_task\n\t"
 		"ldr	r0,[r2,#0]\n\t"
 		"str	r12,[r0,#4]\n\t"
 	);
 
-	// ���ɃX�P�W���[������^�X�N�̑I��
+	// 次にスケジュールするタスクの選択
 	asm(
 		"push	{lr}\n\t"
 		"bl	schedule\n\t"
 		"pop	{lr}\n\t"
 	);
 
-	// �㔼�����ł�
-	// �V����c_task�̎w����i���ɓ������^�X�N��TCB�j���烌�W�X�^�𕜋A
-	// ���x��
-	// �ER12�����o��
-	// �E�ėp���W�X�^�𕜋��ildmia�iInc. After�j�𗘗p�j
-	// ���ɖ߂�
+	// 後半部分では
+	// 新しいc_taskの指す先（次に動かすタスクのTCB）からレジスタを復帰
+	// 今度は
+	// ・R12を取り出し
+	// ・汎用レジスタを復旧（ldmia（Inc. After）を利用）
+	// 元に戻る
 	asm (
 		"movw	r2,#:lower16:c_task\n\t"	// R12 = *(c_task->sp);
 		"movt	r2,#:upper16:c_task\n\t"
@@ -380,7 +381,7 @@ void PendSV_Handler()
 		"ldr	r12,[r0,#4]\n\t"
 
 //		"ldmia	r12!,{r4-r11,lr}\n\t"
-		"ldmia	r12!,{r4-r11}\n\t"		// R4�`R11�𕜋A
+		"ldmia	r12!,{r4-r11}\n\t"		// R4～R11を復帰
 
 		"msr	psp,r12\n\t"			// PSP = R12;
 		"bx	lr\n\t"				// (RETURN)
@@ -389,8 +390,8 @@ void PendSV_Handler()
 
 unsigned int svcop;
 unsigned int svcparam[2];
-void SVCall_Handler(void) __attribute__ ((naked));
-void SVCall_Handler()
+void SVC_Handler(void) __attribute__ ((naked));
+void SVC_Handler()
 {
 	asm(
 		"movw	r2,#:lower16:svcparam\n\t"	// svcparam[0] = R0;
@@ -398,49 +399,51 @@ void SVCall_Handler()
 		"str	r0,[r2,#0]\n\t"
 		"str	r1,[r2,#4]\n\t"
 		"mov	r0,lr\n\t"		// if ((R0 = LR & 0x04) != 0) {
-		"ands	r0,#4\n\t" 		//			// LR�̃r�b�g4��'0'�Ȃ�n���h�����[�h��SVC
-		"beq	.L0000\n\t"		//			// '1'�Ȃ�X���b�h���[�h��SVC
-		"mrs	r1,psp\n\t"		// 	R1 = PSP;	// �v���Z�X�X�^�b�N���R�s�[
+		"ands	r0,#4\n\t" 		//			// LRのビット4が'0'ならハンドラモードでSVC
+		"beq	.L0000\n\t"		//			// '1'ならスレッドモードでSVC
+		"mrs	r1,psp\n\t"		// 	R1 = PSP;	// プロセススタックをコピー
 		"b	.L0001\n\t"		//
 		".L0000:\n\t"			// } else {
-		"mrs	r1,msp\n\t"		//	R1 = MSP;	// ���C���X�^�b�N���R�s�[
+		"mrs	r1,msp\n\t"		//	R1 = MSP;	// メインスタックをコピー
 		".L0001:\n\t"			// }
 		"ldr	r2,[r1,#24]\n\t"	// R2 = R1->PC;
-		"ldr	r0,[r2,#-2]\n\t"	// R0 = *(R2-2);	// SVC(SWI)���߂̉��ʃo�C�g����������
+		"ldr	r0,[r2,#-2]\n\t"	// R0 = *(R2-2);	// SVC(SWI)命令の下位バイトが引数部分
 
-		"movw	r2,#:lower16:svcop\n\t"	// svcop = R0;		// svcop�ϐ��ɃR�s�[
+		"movw	r2,#:lower16:svcop\n\t"	// svcop = R0;		// svcop変数にコピー
 		"movt	r2,#:upper16:svcop\n\t"
 		"str	r0,[r2,#0]\n\t"
 
-		"push	{r7}\n\t"		// PUSH R7	// C����Ńt���[���|�C���^��R7���g���Ă��邽��
-		"sub	sp,sp,#8\n\t"		// SP -= 8;	// (4�o�C�g�~2���j�FC���ꑤ�łQ���[�h���g���Ă�������
+		"push	{r7}\n\t"		// PUSH R7	// C言語でフレームポインタにR7を使っているため
+		"sub	sp,sp,#8\n\t"		// SP -= 8;	// (4バイト×2個分）：C言語側で２ワード分使っていたため
 		"mov	r7,sp\n\t"		// R7 = SP;
 	);
 
-	switch(svcop & 0xff) {			// SVC�̈����i���N�G�X�g�R�[�h�j���擾
-		case 0x00:	// NULL�i�ăX�P�W���[�����O���邾���j
-			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSV�𔭐������ăX�P�W���[�����O
+	switch(svcop & 0xff) {			// SVCの引数（リクエストコード）を取得
+		case 0x00:	// NULL（再スケジューリングするだけ）
+			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSVを発生させてスケジューリング
 			break;
 		case 0x01:	// LEDOFF
-			LPC_GPIO[LED_PORT]->MASKED_ACCESS[1<<LED_BIT] = 0;
+//			LPC_GPIO[LED_PORT]->MASKED_ACCESS[1<<LED_BIT] = 0;
+			GPIOB->BRR = GPIO_PIN_8;
 			break;
 		case 0x02:	// LEDON
-			LPC_GPIO[LED_PORT]->MASKED_ACCESS[1<<LED_BIT] = -1;
+//			LPC_GPIO[LED_PORT]->MASKED_ACCESS[1<<LED_BIT] = -1;
+			GPIOB->BSRR = GPIO_PIN_8;
 			break;
 		case 0x10:	// SLEEP
-			tcb[c_tasknum].param1 = svcparam[0];		// �p�����[�^��ς��
-			tcb[c_tasknum].state = STATE_SLEEP;		// �X���[�v��Ԃɂ��Ă���
-			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSV�𔭐������ăX�P�W���[�����O
+			tcb[c_tasknum].param1 = svcparam[0];		// パラメータを積んで
+			tcb[c_tasknum].state = STATE_SLEEP;		// スリープ状態にしておく
+			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSVを発生させてスケジューリング
 			break;
 		case 0x11:	// TASKON
-			q_pending[0] = svcparam[0];			// �^�X�N�ԍ���Pending�ɃZ�b�g
-			q_pending[1] = STATE_READY;			// READY��ԂɑJ�ڂ�������
-			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSV�𔭐������ăX�P�W���[�����O
+			q_pending[0] = svcparam[0];			// タスク番号をPendingにセット
+			q_pending[1] = STATE_READY;			// READY状態に遷移させたい
+			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSVを発生させてスケジューリング
 			break;
 		case 0x12:	// TASKOFF
-			q_pending[0] = svcparam[0];			// �^�X�N�ԍ���Pending�ɃZ�b�g
-			q_pending[1] = STATE_IDLE;			// IDLE��ԂɑJ�ڂ�������
-			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSV�𔭐������ăX�P�W���[�����O
+			q_pending[0] = svcparam[0];			// タスク番号をPendingにセット
+			q_pending[1] = STATE_IDLE;			// IDLE状態に遷移させたい
+			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSVを発生させてスケジューリング
 			break;
 		case 0x13:	// SEMAGET
 			asm (
@@ -561,7 +564,7 @@ void SVCall_Handler()
 			break;
 		case 0xf0:	// CHG_IDLE
 			tcb[c_tasknum].state = STATE_IDLE;
-			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSV�𔭐������ăX�P�W���[�����O
+			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSVを発生させてスケジューリング
 			break;
 		case 0xff:	// CHG_UNPRIVILEGE
 			asm(
@@ -571,12 +574,12 @@ void SVCall_Handler()
 				"ldr	r2,[r0,#4]\n\t"
 				"msr	psp,r2\n\t"
 				"orr	lr,lr,#4"			// LR |= 0x04;
-									// �X���b�h���[�h�Ɉڍs
-									// 1001:msp�g�p(�v���Z�X�j 1101:psp�g�p�i�X���b�h�j
-									// �Ȃ̂ŁA�Z�b�g����ƃX���b�h���[�h�ɂȂ�
+									// スレッドモードに移行
+									// 1001:msp使用(プロセス） 1101:psp使用（スレッド）
+									// なので、セットするとスレッドモードになる
 			);
-			task_start = 1;					// �ȍ~�̓^�X�N�X�C�b�`���O���s
-			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSV�𔭐�������
+			task_start = 1;					// 以降はタスクスイッチング実行
+			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSVを発生させる
 			break;
 		default:
 			break;
@@ -589,13 +592,13 @@ void SVCall_Handler()
 
 
 //=======================================
-//= ��������̓^�X�N			=
+//= ここからはタスク			=
 //=======================================
 //
 
 //===============================
 //=				=
-//= SVC�̒�`			=
+//= SVCの定義			=
 //=				=
 //===============================
 
@@ -621,12 +624,12 @@ void SVCall_Handler()
 
 //===============================
 //=				=
-//= SVC�C���^�[�t�F�[�XAPI	=
+//= SVCインターフェースAPI	=
 //=				=
 //===============================
 
 //
-// NULL:�X�P�W���[�����Ăяo���A���̃^�X�N���N������
+// NULL:スケジューラを呼び出し、次のタスクを起動する
 //
 void SVC_NULL(void)
 {
@@ -634,7 +637,7 @@ void SVC_NULL(void)
 }
 
 //
-// LEDOFF�F�{�[�h���LED����������
+// LEDOFF：ボード上のLEDを消灯する
 //
 void SVC_LEDOFF(void)
 {
@@ -643,7 +646,7 @@ void SVC_LEDOFF(void)
 
 
 //
-// LEDON�F�{�[�h���LED��_������
+// LEDON：ボード上のLEDを点灯する
 //
 void SVC_LEDON(void)
 {
@@ -651,7 +654,7 @@ void SVC_LEDON(void)
 }
 
 //
-// IDLE:IDLE�X�e�[�g�Ɉڍs����i���b�Z�[�W�҂��Ȃǂŗ��p�j
+// IDLE:IDLEステートに移行する（メッセージ待ちなどで利用）
 //
 void SVC_IDLE(void)
 {
@@ -659,7 +662,7 @@ void SVC_IDLE(void)
 }
 
 //
-// �X���b�h���[�h�Ɉڍs�imain()����MicroMulti���N�����鎞�ɗ��p���邾���j
+// スレッドモードに移行（main()からMicroMultiを起動する時に利用するだけ）
 //
 void SVC_CHG_UNPRIVILEGE(void)
 {
@@ -667,7 +670,7 @@ void SVC_CHG_UNPRIVILEGE(void)
 }
 
 //
-// SLEEP�F�w�肵���񐔕��V�X�e���^�C�}���荞�݂�����܂ŃX���[�v
+// SLEEP：指定した回数分システムタイマ割り込みがくるまでスリープ
 //
 void SVC_SLEEP(unsigned int times)
 {
@@ -675,7 +678,7 @@ void SVC_SLEEP(unsigned int times)
 }
 
 //
-// TASKON�F�w�肵���^�X�N�ԍ��̃^�X�N���N��
+// TASKON：指定したタスク番号のタスクを起動
 //
 void SVC_TASKON(unsigned int tasknum)
 {
@@ -683,7 +686,7 @@ void SVC_TASKON(unsigned int tasknum)
 }
 
 //
-// TASKOFF�F�w�肵���^�X�N�ԍ��̃^�X�N���~
+// TASKOFF：指定したタスク番号のタスクを停止
 //
 void SVC_TASKOFF(unsigned int tasknum)
 {
@@ -691,18 +694,18 @@ void SVC_TASKOFF(unsigned int tasknum)
 }
 
 //
-// SEMAGET�F�w�肵���ԍ��̃Z�}�t�H�擾�v��
-//�@�Z�}�t�H�������0�A���Ȃ����0�ȊO���Ԃ�
+// SEMAGET：指定した番号のセマフォ取得要求
+//　セマフォが取れれば0、取れなければ0以外が返る
 //
 unsigned char SVC_SEMAGET(unsigned char d)
 {
-	register unsigned int retval asm ("r0");	// retval��R0���W�X�^�Ɋ��t��
+	register unsigned int retval asm ("r0");	// retvalをR0レジスタに割付け
 	SYSCALL_SEMAGET(d);
 	return(retval);
 }
 
 //
-// �Z�}�t�H������܂ő҂�
+// セマフォが取れるまで待つ
 //
 void SVC_SEMAGET_W(unsigned char d)
 {
@@ -712,7 +715,7 @@ void SVC_SEMAGET_W(unsigned char d)
 
 
 //
-// SEMACLR�F�w�肵���ԍ��̃Z�}�t�H���N���A�i�ԋp�j
+// SEMACLR：指定した番号のセマフォをクリア（返却）
 //
 void SVC_SEMACLR(unsigned char d)
 {
@@ -720,7 +723,7 @@ void SVC_SEMACLR(unsigned char d)
 }
 
 //
-// MSGBLKGET:�t���[�ȃ��b�Z�[�W�u���b�N�����o��
+// MSGBLKGET:フリーなメッセージブロックを取り出す
 //
 unsigned char SVC_MSGBLKGET()
 {
@@ -729,7 +732,7 @@ unsigned char SVC_MSGBLKGET()
 	return(c);
 }
 
-// ���b�Z�[�W�u���b�N���擾�ł���܂ŃE�F�C�g����^�C�v
+// メッセージブロックが取得できるまでウェイトするタイプ
 unsigned char SVC_MSGBLKGET_W()
 {
 	unsigned char c;
@@ -739,7 +742,7 @@ unsigned char SVC_MSGBLKGET_W()
 }
 
 //
-// MSGBLKFREE�F�w�肵�����b�Z�[�W�u���b�N��ԋp
+// MSGBLKFREE：指定したメッセージブロックを返却
 //
 void SVC_MSGBLKFREE(unsigned char d)
 {
@@ -747,7 +750,7 @@ void SVC_MSGBLKFREE(unsigned char d)
 }
 
 //
-// MSGBLKSND�F�w�肵���^�X�N�Ƀ��b�Z�[�W�u���b�N�𑗐M
+// MSGBLKSND：指定したタスクにメッセージブロックを送信
 //
 void SVC_MSGBLKSEND(unsigned char tcbnum, unsigned char msgblk)
 {
@@ -755,8 +758,8 @@ void SVC_MSGBLKSEND(unsigned char tcbnum, unsigned char msgblk)
 }
 
 //
-// MSGBLKRCV�F���b�Z�[�W��M
-//�@���b�Z�[�W������΃��b�Z�[�W�ԍ��A�������EOQ�i0xff�j���Ԃ�
+// MSGBLKRCV：メッセージ受信
+//　メッセージがあればメッセージ番号、無ければEOQ（0xff）が返る
 //
 unsigned char SVC_MSGBLKRCV()
 {
@@ -778,7 +781,7 @@ unsigned char SVC_TASKIDGET()
 
 //===============================
 //=				=
-//=�@�^�X�N�֐�			=
+//=　タスク関数			=
 //=				=
 //===============================
 
@@ -807,15 +810,15 @@ void th_blink()
 		mblk = SVC_MSGBLKGET_W();
 		msgblk[mblk].param_c = 1;
 		SVC_MSGBLKSEND(2, mblk);
-		SVC_SLEEP(2);
+		SVC_SLEEP(200);
 		mblk = SVC_MSGBLKGET_W();
 		msgblk[mblk].param_c = 0;
 		SVC_MSGBLKSEND(2, mblk);
-		SVC_SLEEP(2);
+		SVC_SLEEP(200);
 		mblk = SVC_MSGBLKGET_W();
 		msgblk[mblk].param_c = 2;
 		SVC_MSGBLKSEND(2, mblk);
-		SVC_SLEEP(2);
+		SVC_SLEEP(200);
 	}
 }
 
@@ -855,14 +858,14 @@ void th_ledon()
 
 //===============================
 //=				=
-//=�@�X�^�[�g�A�b�v�Ə������֐�	=
+//=　スタートアップと初期化関数	=
 //=				=
 //===============================
 
 //
-// ���b�Z�[�W�u���b�N�̏�����
+// メッセージブロックの初期化
 //
-//  �S�u���b�N�Ƃ��t���[��Ԃɂ��邾��
+//  全ブロックともフリー状態にするだけ
 void init_msgblk()
 {
 	unsigned char c;
@@ -878,7 +881,7 @@ void init_msgblk()
 
 
 //
-// �Z�}�t�H�f�[�^�̏�����
+// セマフォデータの初期化
 //
 void init_semadat()
 {
@@ -888,13 +891,13 @@ void init_semadat()
 }
 
 //
-//  TCB�̏������ƃ^�X�N�o�^
+//  TCBの初期化とタスク登録
 //
-//�@XPSR�̃r�b�g24��'1'�ɂ��Ȃ��ƃn�[�h�G���[�ɂȂ�̂Œ���
+//　XPSRのビット24は'1'にしないとハードエラーになるので注意
 //
-//�@�X�^�b�N�f�[�^�쐬�����ڃL���X�g���ăA�N�Z�X�����
-//�@�R�[�h�������ԈႤ�悤�Ȃ̂ŁA��Uunsigned int��
-//�@�L���X�g���đ�����Ȃ������B
+//　スタックデータ作成時直接キャストしてアクセスすると
+//　コード生成を間違うようなので、一旦unsigned intに
+//　キャストして代入しなおした。
 //
 unsigned int *p;
 TSTK	*p_stk;
@@ -924,10 +927,10 @@ void regist_tcb(unsigned char tasknum, void(*task)(void))
 }
 
 //
-// �������烁�C�����[�`��
-// ���X�̏����������Ă���A�}���`�^�X�N���[�h�Ɉڍs
+// ここからメインルーチン
+// 諸々の初期化をしてから、マルチタスクモードに移行
 //
-int main(void)
+int main_rtos(void)
 {
 	// TODO: insert code here
 	unsigned int i;
@@ -939,16 +942,16 @@ int main(void)
 	task_start = 0;
 	c_tasknum = 0;
 	c_task = &tcb[c_tasknum];
-	LPC_GPIO[LED_PORT]->DIR |= 1<<LED_BIT;
-	LPC_GPIO[LED_PORT]->MASKED_ACCESS[1<<LED_BIT] = 0;
+//	LPC_GPIO[LED_PORT]->DIR |= 1<<LED_BIT;
+//	LPC_GPIO[LED_PORT]->MASKED_ACCESS[1<<LED_BIT] = 0;
 
 	pendsv_count = 0;
 	systick_count = 10;
-//	SysTick_Config(SystemCoreClock/100);	// 1/100�b�i=10ms�j���Ƃ�SysTick���荞��
-	SysTick_Config(SystemCoreClock/10);	// 1/10�b�i=100ms�j���Ƃ�SysTick���荞��
-	NVIC_SetPriority(SVCall_IRQn, 0x80);	// SVC�̗D��x�͒��ق�
-	NVIC_SetPriority(SysTick_IRQn, 0xc0);	// SysTick�̗D��x��SVC���Ⴍ
-	NVIC_SetPriority(PendSV_IRQn, 0xff);	// PendSV�̗D��x���Œ�ɂ��Ă���
+//	SysTick_Config(SystemCoreClock/100);	// 1/100秒（=10ms）ごとにSysTick割り込み
+//	SysTick_Config(SystemCoreClock/10);	// 1/10秒（=100ms）ごとにSysTick割り込み
+	NVIC_SetPriority(SVCall_IRQn, 0x80);	// SVCの優先度は中ほど
+	NVIC_SetPriority(SysTick_IRQn, 0xc0);	// SysTickの優先度はSVCより低く
+	NVIC_SetPriority(PendSV_IRQn, 0xff);	// PendSVの優先度を最低にしておく
 	NVIC_EnableIRQ(SysTick_IRQn);
 
 	// Enter an infinite loop, just incrementing a counter
@@ -965,12 +968,12 @@ int main(void)
 		SVC_LEDOFF();
 	}
 
-	//�@���̒i�K�ł͂܂��������[�h�ł���AMSP���g���Ă���
-	//�@PSP�v���Z�X�X�^�b�N�͔�������[�h�œ����Ă�����
-	// �^�X�N#0�imain()���璼�ڐ؂�ւ���ē����^�X�N�j�̃X�^�b�N
-	// �ɂ��ẮA���[�U���ςޕ���������Ă���
-	// CHG_UNPRIVILEGE��SVC=>PendSV�̎���PSP�ɐς݂Ȃ������Ƃ�
-	// ���܂�����
+	//　この段階ではまだ特権モードであり、MSPが使われている
+	//　PSPプロセススタックは非特権モードで動いている状態
+	// タスク#0（main()から直接切り替わって動くタスク）のスタック
+	// については、ユーザが積む分だけ削っておく
+	// CHG_UNPRIVILEGEでSVC=>PendSVの時にPSPに積みなおすことで
+	// つじつまが合う
 	q_ready = EOQ;
 	q_sleep = EOQ;
 	q_pending[0] = EOQ;
@@ -985,17 +988,17 @@ int main(void)
 	regist_tcb(2,th_ledon);
 	tcb[2].state = STATE_IDLE;
 
-	// Ready_Q�ɂȂ��ł���
-	// �ŏ���#0���������Ƃɂ����̂ŁA#0�͂����Ȃ�CurrentTASK�ɂȂ邽�߁A
-	// Ready_Q�ɂȂ��̂�0�ȊO
+	// Ready_Qにつないでおく
+	// 最初は#0が動くことにしたので、#0はいきなりCurrentTASKになるため、
+	// Ready_Qにつなぐのは0以外
 	tcbq_append(&q_ready, 1);
 //	tcbq_append(&q_ready, 2);
 
 	tcb[3].state = STATE_FREE;
 	tcb[3].link = EOQ;
 
-	SVC_CHG_UNPRIVILEGE();	// �X���b�h#0�Ɉڍs����
+	SVC_CHG_UNPRIVILEGE();	// スレッド#0に移行する
 
-	while(1);		// �߂��Ă��邱�Ƃ͖������ǁA�O�̂���
+	while(1);		// 戻ってくることは無いけど、念のため
 }
 
