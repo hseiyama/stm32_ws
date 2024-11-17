@@ -53,7 +53,7 @@ extern UART_HandleTypeDef huart2;
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+extern int main_rtos(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
