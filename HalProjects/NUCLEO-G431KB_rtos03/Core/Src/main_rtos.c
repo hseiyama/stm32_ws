@@ -129,6 +129,36 @@ MSGBLK msgblk[MAX_MSGBLK];
 
 
 
+//
+// UART送信
+//
+uint8_t UartWrite(uint8_t data)
+{
+	uint8_t RetCode = NG;
+	__disable_irq();
+	if ((USART2->ISR & USART_ISR_TXE_TXFNF) == USART_ISR_TXE_TXFNF) {
+		USART2->TDR = data;
+		RetCode = OK;
+	}
+	__enable_irq();
+	return RetCode;
+}
+
+//
+// UART受信
+//
+uint8_t UartRead(uint8_t *data)
+{
+	uint8_t RetCode = NG;
+	__disable_irq();
+	if ((USART2->ISR & USART_ISR_RXNE_RXFNE) == USART_ISR_RXNE_RXFNE) {
+		*data = USART2->RDR;
+		RetCode = OK;
+	}
+	__enable_irq();
+	return RetCode;
+}
+
 //===============================================
 //= 		TCB関係処理			=
 //===============================================
@@ -617,7 +647,7 @@ void SVC_Handler()
 #define	SYSCALL_SEMACLR(x)	{register int p0 asm("r0"); p0=x; asm ("svc #0x14"::"r"(p0));}
 #define	SYSCALL_MSGBLKGET	asm("svc #0x15\n\t")
 #define	SYSCALL_MSGBLKFREE(x)	{register int p0 asm("r0"); p0=x; asm ("svc #0x16"::"r"(p0));}
-#define	SYSCALL_MSGBLKSEND(tcb,msgblk)	{register int p0 asm("r0"); register int p1 asm ("r1"); p0=tcb; p1=msgblk;  asm ("svc #0x17"::"r"(p0,p1));}
+#define	SYSCALL_MSGBLKSEND(tcb,msgblk)	{register int p0 asm("r0"); register int p1 asm ("r1"); p0=tcb; p1=msgblk;  asm ("svc #0x17"::"r"(p0),"r"(p1));}
 #define	SYSCALL_MSGBLKRCV	asm("svc #0x18\n\t")
 #define	SYSCALL_TASKIDGET	asm("svc #0x19\n\t")
 
@@ -788,8 +818,12 @@ unsigned char SVC_TASKIDGET()
 unsigned char dbgdata[3];
 void th_zero()
 {
+	uint8_t RcvData;
 	dbgdata[0] = SVC_TASKIDGET();
 	while(1) {
+		if (UartRead(&RcvData) == OK) {
+			UartWrite(RcvData);
+		}
 		SVC_NULL();
 	}
 }
@@ -807,6 +841,7 @@ void th_blink()
 	dbgdata[1] = SVC_TASKIDGET();
 	SVC_TASKON(2);
 	while(1) {
+		UartWrite('B');
 		mblk = SVC_MSGBLKGET_W();
 		msgblk[mblk].param_c = 1;
 		SVC_MSGBLKSEND(2, mblk);
@@ -828,6 +863,7 @@ void th_ledon()
 	unsigned char mblk;
 	dbgdata[2] = SVC_TASKIDGET();
 	while(1) {
+		UartWrite('C');
 		SVC_IDLE();
 		do {
 			mblk = SVC_MSGBLKRCV();

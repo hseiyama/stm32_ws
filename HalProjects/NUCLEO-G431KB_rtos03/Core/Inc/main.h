@@ -67,7 +67,8 @@ extern int main_rtos(void);
 #define LD2_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-
+#define OK (1)
+#define NG (0)
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
