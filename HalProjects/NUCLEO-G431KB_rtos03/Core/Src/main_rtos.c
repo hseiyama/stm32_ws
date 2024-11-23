@@ -9,7 +9,6 @@
 */
 
 //#ifdef __USE_CMSIS
-//#include "LPC13xx.h"
 #include "main.h"
 //#endif
 
@@ -87,7 +86,7 @@ struct TCTRL_STRUC {
 	unsigned char	state;
 	unsigned char	msg_q;
 	unsigned char	param0;
-	TSTK		*sp;
+	TSTK			*sp;
 	unsigned int	param1;
 	unsigned int	param2;
 };
@@ -120,12 +119,6 @@ struct MSGBLK_STRUC {
 };
 typedef struct MSGBLK_STRUC MSGBLK;
 MSGBLK msgblk[MAX_MSGBLK];
-
-
-
-//static LPC_GPIO_TypeDef (* const LPC_GPIO[4]) = { LPC_GPIO0, LPC_GPIO1, LPC_GPIO2, LPC_GPIO3 };
-//#define	LED_PORT	0
-//#define	LED_BIT		7
 
 
 
@@ -378,43 +371,39 @@ void PendSV_Handler(void) __attribute__ ((naked));
 void PendSV_Handler()
 {
 	// 前半部分では、
-	// ・自動退避されない汎用レジスタをR12でstmdb（Dec. Before)を使ってPSP上に退避
+	// ・自動退避されない汎用レジスタをR12でstmdb(Dec. Before)を使ってPSP上に退避
 	// ・c_task（現在実行中のタスクのTCBをさしている）にR12を退避
 	// を実行
-	asm(						// R12をワーク用スタックとして利用
-		"mrs	r12,psp\n\t"			// R12にPSPの値をコピー
-//		"stmdb	r12!,{r4-r11,lr}\n\t"
-		"stmdb	r12!,{r4-r11}\n\t"		// 自動退避されないR4～R11を退避
-		"movw	r2,#:lower16:c_task\n\t"	// *(ctask->sp) = R12;
-		"movt	r2,#:upper16:c_task\n\t"
-		"ldr	r0,[r2,#0]\n\t"
-		"str	r12,[r0,#4]\n\t"
+	asm(									// R12をワーク用スタックとして利用
+	"	mrs		r12,psp					\n"	// R12 = PSP;
+	"	stmdb	r12!,{r4-r11}			\n"	// 自動退避されないR4～R11を退避
+	"	movw	r2,#:lower16:c_task		\n"	// R2 = &c_task;
+	"	movt	r2,#:upper16:c_task		\n"
+	"	ldr		r0,[r2,#0]				\n"
+	"	str		r12,[r0,#4]				\n"	// *(ctask->sp) = R12;
 	);
 
 	// 次にスケジュールするタスクの選択
 	asm(
-		"push	{lr}\n\t"
-		"bl	schedule\n\t"
-		"pop	{lr}\n\t"
+	"	push	{lr}					\n"
+	"	bl		schedule				\n"
+	"	pop		{lr}					\n"
 	);
 
 	// 後半部分では
 	// 新しいc_taskの指す先（次に動かすタスクのTCB）からレジスタを復帰
 	// 今度は
 	// ・R12を取り出し
-	// ・汎用レジスタを復旧（ldmia（Inc. After）を利用）
+	// ・汎用レジスタを復旧（ldmia(Inc. After)を利用）
 	// 元に戻る
-	asm (
-		"movw	r2,#:lower16:c_task\n\t"	// R12 = *(c_task->sp);
-		"movt	r2,#:upper16:c_task\n\t"
-		"ldr	r0,[r2,#0]\n\t"
-		"ldr	r12,[r0,#4]\n\t"
-
-//		"ldmia	r12!,{r4-r11,lr}\n\t"
-		"ldmia	r12!,{r4-r11}\n\t"		// R4～R11を復帰
-
-		"msr	psp,r12\n\t"			// PSP = R12;
-		"bx	lr\n\t"				// (RETURN)
+	asm(
+	"	movw	r2,#:lower16:c_task		\n"	// R2 = &c_task;
+	"	movt	r2,#:upper16:c_task		\n"
+	"	ldr		r0,[r2,#0]				\n"
+	"	ldr		r12,[r0,#4]				\n"	// R12 = *(c_task->sp);
+	"	ldmia	r12!,{r4-r11}			\n"	// 退避したR4～R11を復帰
+	"	msr		psp,r12					\n"	// PSP = R12;
+	"	bx		lr						\n"	// return;
 	);
 }
 
@@ -424,212 +413,208 @@ void SVC_Handler(void) __attribute__ ((naked));
 void SVC_Handler()
 {
 	asm(
-		"movw	r2,#:lower16:svcparam\n\t"	// svcparam[0] = R0;
-		"movt	r2,#:upper16:svcparam\n\t"	// svcparam[1] = R1;
-		"str	r0,[r2,#0]\n\t"
-		"str	r1,[r2,#4]\n\t"
-		"mov	r0,lr\n\t"		// if ((R0 = LR & 0x04) != 0) {
-		"ands	r0,#4\n\t" 		//			// LRのビット4が'0'ならハンドラモードでSVC
-		"beq	.L0000\n\t"		//			// '1'ならスレッドモードでSVC
-		"mrs	r1,psp\n\t"		// 	R1 = PSP;	// プロセススタックをコピー
-		"b	.L0001\n\t"		//
-		".L0000:\n\t"			// } else {
-		"mrs	r1,msp\n\t"		//	R1 = MSP;	// メインスタックをコピー
-		".L0001:\n\t"			// }
-		"ldr	r2,[r1,#24]\n\t"	// R2 = R1->PC;
-		"ldr	r0,[r2,#-2]\n\t"	// R0 = *(R2-2);	// SVC(SWI)命令の下位バイトが引数部分
+	"	movw	r2,#:lower16:svcparam	\n"	// R2 = &svcparam;
+	"	movt	r2,#:upper16:svcparam	\n"
+	"	str		r0,[r2,#0]				\n"	// svcparam[0] = R0;
+	"	str		r1,[r2,#4]				\n"	// svcparam[1] = R1;
+	"	mov		r0,lr					\n"	// if ((LR & 0x04) != 0) {
+	"	ands	r0,#4					\n"	//					// LRのビット4が'0'ならハンドラモードでSVC
+	"	beq		.L0000					\n"	//					// '1'ならスレッドモードでSVC
+	"	mrs		r1,psp					\n"	//   R1 = PSP;		// プロセススタックをコピー
+	"	b		.L0001					\n"
+	".L0000:							\n"	// } else {
+	"	mrs		r1,msp					\n"	//   R1 = MSP;		// メインスタックをコピー
+	".L0001:							\n"	// }
+	"	ldr		r2,[r1,#24]				\n"	// R2 = R1->PC;
+	"	ldrh	r0,[r2,#-2]				\n"	// R0 = *(R2-2);	// SVC(SWI)命令の下位バイトが引数部分
+	"	movw	r2,#:lower16:svcop		\n"	// R2 = &svcop;
+	"	movt	r2,#:upper16:svcop		\n"
+	"	str		r0,[r2,#0]				\n"	// svcop = R0;		// svcop変数にコピー
 
-		"movw	r2,#:lower16:svcop\n\t"	// svcop = R0;		// svcop変数にコピー
-		"movt	r2,#:upper16:svcop\n\t"
-		"str	r0,[r2,#0]\n\t"
-
-		"push	{r7}\n\t"		// PUSH R7	// C言語でフレームポインタにR7を使っているため
-		"sub	sp,sp,#8\n\t"		// SP -= 8;	// (4バイト×2個分）：C言語側で２ワード分使っていたため
-		"mov	r7,sp\n\t"		// R7 = SP;
+	"	push	{r7}					\n"	// PUSH R7			// C言語でフレームポインタにR7を使っているため
+	"	sub		sp,sp,#8				\n"	// SP -= 8;			// (4バイト×2個分）：C言語側で２ワード分使っていたため
+	"	mov		r7,sp					\n"	// R7 = SP;
 	);
 
-	switch(svcop & 0xff) {			// SVCの引数（リクエストコード）を取得
+	switch(svcop & 0xff) {							// SVCの引数（リクエストコード）を取得
 		case 0x00:	// NULL（再スケジューリングするだけ）
-			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSVを発生させてスケジューリング
+			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;	// PendSVを発生させてスケジューリング
 			break;
 		case 0x01:	// LEDOFF
-//			LPC_GPIO[LED_PORT]->MASKED_ACCESS[1<<LED_BIT] = 0;
-			GPIOB->BRR = GPIO_PIN_8;
+			GPIOB->BRR = GPIO_BRR_BR8_Msk;
 			break;
 		case 0x02:	// LEDON
-//			LPC_GPIO[LED_PORT]->MASKED_ACCESS[1<<LED_BIT] = -1;
-			GPIOB->BSRR = GPIO_PIN_8;
+			GPIOB->BSRR = GPIO_BSRR_BS8_Msk;
 			break;
 		case 0x10:	// SLEEP
-			tcb[c_tasknum].param1 = svcparam[0];		// パラメータを積んで
+			tcb[c_tasknum].param1 = svcparam[0];	// パラメータを積んで
 			tcb[c_tasknum].state = STATE_SLEEP;		// スリープ状態にしておく
-			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSVを発生させてスケジューリング
+			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;	// PendSVを発生させてスケジューリング
 			break;
 		case 0x11:	// TASKON
-			q_pending[0] = svcparam[0];			// タスク番号をPendingにセット
-			q_pending[1] = STATE_READY;			// READY状態に遷移させたい
-			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSVを発生させてスケジューリング
+			q_pending[0] = svcparam[0];				// タスク番号をPendingにセット
+			q_pending[1] = STATE_READY;				// READY状態に遷移させたい
+			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;	// PendSVを発生させてスケジューリング
 			break;
 		case 0x12:	// TASKOFF
-			q_pending[0] = svcparam[0];			// タスク番号をPendingにセット
-			q_pending[1] = STATE_IDLE;			// IDLE状態に遷移させたい
-			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSVを発生させてスケジューリング
+			q_pending[0] = svcparam[0];				// タスク番号をPendingにセット
+			q_pending[1] = STATE_IDLE;				// IDLE状態に遷移させたい
+			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;	// PendSVを発生させてスケジューリング
 			break;
-		case 0x13:	// SEMAGET
-			asm (
-				"movw	r2,#:lower16:svcparam\n\t"
-				"movt	r2,#:upper16:svcparam\n\t"
-				"ldr	r0,[r2,#0]\n\t"
-				"movw	r2,#:lower16:semadat\n\t"
-				"movt	r2,#:upper16:semadat\n\t"
-				"add	r2,r0\n\t"
-				"mov	r0,#0\n\t"
-				"ldrb	r0,[r2,#0]\n\t"
-				"str	r0,[r1,#0]\n\t"
-				"cmp	r0,#0\n\t"
-				"bne	.L0100\n\t"
-				"mov	r0,#1\n\t"
-				"str	r0,[r2,#0]\n\t"
-				".L0100:\n\t"
+		case 0x13:	// SEMAGET(data#)
+			asm(
+			"	movw	r2,#:lower16:svcparam	\n"	// R2 = &svcparam;
+			"	movt	r2,#:upper16:svcparam	\n"
+			"	ldr		r0,[r2,#0]				\n"	// R0 = svcparam[0];(DATA#)
+			"	movw	r2,#:lower16:semadat	\n"	// R2 = &semadat;
+			"	movt	r2,#:upper16:semadat	\n"
+			"	add		r2,r0					\n"
+			"	mov		r0,#0					\n"
+			"	ldrb	r0,[r2,#0]				\n"	// R0 = semadat[DATA#];
+			"	str		r0,[r1,#0]				\n"	// R1->R0 = R0;(return R0)
+			"	cmp		r0,#0					\n"	// if (R0 == 0) {
+			"	bne		.L0100					\n"
+			"	mov		r0,#1					\n"	//   R0 = 1;
+			"	str		r0,[r2,#0]				\n"	//   semadat[DATA#] = R0;
+			".L0100:							\n"	// }
 			);
 			break;
 		case 0x14:	// CLRSEMA
 			semadat[svcparam[0]] = 0;
 			break;
 		case 0x15:	// MSGBLKGET
-			asm (
-				"movw	r3,#:lower16:q_msgblk\n\t"	// R3 = &q_msgblk;
-				"movt	r3,#:upper16:q_msgblk\n\t"
-				"ldrb	r0,[r3,#0]\n\t"			// R0 = q_msgblk;
-				"cmp	r0,#0xff\n\t"			// if (R0 != EOQ) {
-				"beq	.L1500\n\t"			//
-				"movw	r2,#:lower16:msgblk\n\t"	//   R2 = msgblk[R0].link;
-				"movt	r2,#:upper16:msgblk\n\t"
-				"ldrb	r2,[r2, r0, lsl #3]\n\t"
-				"strb	r2,[r3, #0]\n\t"		//   q_msgblk = R2;
-				"movw	r2,#:lower16:msgblk\n\t"	//   msgblk[R0].link = 0xff;
-				"movt	r2,#:upper16:msgblk\n\t"
-				"mov	r3,#0xff\n\t"
-				"strb	r3,[r2, r0, lsl #3]\n\t"
-				".L1500:\n\t"				// }
-				"str	r0,[r1,#0]\n\t"			// return(R0);
+			asm(
+			"	movw	r3,#:lower16:q_msgblk	\n"	// R3 = &q_msgblk;
+			"	movt	r3,#:upper16:q_msgblk	\n"
+			"	ldrb	r0,[r3,#0]				\n"	// R0 = q_msgblk;
+			"	cmp		r0,#0xff				\n"	// if (R0 != EOQ) {
+			"	beq		.L1500					\n"
+			"	movw	r2,#:lower16:msgblk		\n"	//   R2 = &msgblk;
+			"	movt	r2,#:upper16:msgblk		\n"
+			"	ldrb	r2,[r2,r0, lsl #3]		\n"	//   R2 = msgblk[R0].link;
+			"	strb	r2,[r3,#0]				\n"	//   q_msgblk = R2;
+			"	movw	r2,#:lower16:msgblk		\n"	//   R2 = &msgblk;
+			"	movt	r2,#:upper16:msgblk		\n"
+			"	mov		r3,#0xff				\n"
+			"	strb	r3,[r2,r0, lsl #3]		\n" //   msgblk[R0].link = 0xff;
+			".L1500:							\n"	// }
+			"	str		r0,[r1,#0]				\n"	// return(R0);
 			);
 			break;
-		case 0x16:	// MSGBLKFREE
-			asm (
-				"movw	r2,#:lower16:svcparam\n\t"
-				"movt	r2,#:upper16:svcparam\n\t"
-				"ldrb	r1,[r2,#0]\n\t"
-				"movw	r2,#:lower16:msgblk\n\t"
-				"movt	r2,#:upper16:msgblk\n\t"
-
-				"movw	r3,#:lower16:q_msgblk\n\t"
-				"movt	r3,#:upper16:q_msgblk\n\t"
-				"ldrb	r0,[r3,#0]\n\t"
-				"strb	r1,[r3,#0]\n\t"
-				"strb	r0,[r2, r1, lsl #3]\n\t"
+		case 0x16:	// MSGBLKFREE(data#)
+			asm(
+			"	movw	r2,#:lower16:svcparam	\n"	// R2 = &svcparam;
+			"	movt	r2,#:upper16:svcparam	\n"
+			"	ldrb	r1,[r2,#0]				\n"	// R1 = svcparam[0];(DATA#)
+			"	movw	r2,#:lower16:msgblk		\n"	// R2 = &msgblk;
+			"	movt	r2,#:upper16:msgblk		\n"
+			"	movw	r3,#:lower16:q_msgblk	\n"	// R3 = &q_msgblk;
+			"	movt	r3,#:upper16:q_msgblk	\n"
+			"	ldrb	r0,[r3,#0]				\n"	// R0 = q_msgblk;
+			"	strb	r1,[r3,#0]				\n"	// q_msgblk = DATA#;
+			"	strb	r0,[r2,r1, lsl #3]		\n"	// msgblk[DATA#].link = R0;
 			);
 			break;
-		case 0x17:	// MSGBLKSEND(task#, msgblk#);
-			asm (
-				"movw	r3,#:lower16:svcparam\n\t"
-				"movt	r3,#:upper16:svcparam\n\t"
-				"ldr	r0,[r3,#0]\n\t"		// R0=svcparam[0]<<4;(TASK#)
-				"mov	r0,r0, lsl #4\n\t"
-				"ldr	r1,[r3,#4]\n\t"		// R1=svcparam[1];(MSGBLK#)
-				"movw	r3,#:lower16:tcb\n\t"
-				"movt	r3,#:upper16:tcb\n\t"
-				"add	r0,#2\n\t"
-				"ldrb	r2,[r3,r0]\n\t"		// R2 = tcb[TASK#].msg_q;(MSGBLK#)
-				"cmp	r2,#0xff\n\t"		// if (R2 == EOQ) {
-				"bne	.L1700\n\t"
-				"strb	r1,[r3,r0]\n\t"		// tcb[svcparam[0]].msg_q = R1;
-				"b	.L1702\n\t"		// } else {
-				".L1700:\n\t"
-				"movw	r3,#:lower16:msgblk\n\t"
-				"movt	r3,#:upper16:msgblk\n\t"
-				".L1701:\n\t"			// while(1) {
-				"ldrb	r0,[r3,r2, lsl #3]\n\t"	//   R0 = msgblk[R2].link
-				"cmp	r0,#0xff\n\t"		//   if (R0 == EOQ)
-				"beq	.L1702\n\t"		//     break;
-				"mov	r2,r0\n\t"		//   R2 = R0;
-				"b	.L1701\n\t"		// }
-				".L1702:\n\t"			//}
-				"strb	r1,[r3,r2, lsl #3]\n\t"	// msgblk[R2].link = R1;
-				"movw	r3,#:lower16:msgblk\n\t"	// msgblk[R1].link = EOQ;
-				"movt	r3,#:upper16:msgblk\n\t"
-				"mov	r0,#0xff\n\t"
-				"strb	r0,[r3,r1, lsl #3]\n\t"
+		case 0x17:	// MSGBLKSEND(task#, msgblk#)
+			asm(
+			"	movw	r3,#:lower16:svcparam	\n"	// R3 = &svcparam;
+			"	movt	r3,#:upper16:svcparam	\n"
+			"	ldr		r0,[r3,#0]				\n"	// R0 = svcparam[0];(TASK#)
+			"	mov		r0,r0, lsl #4			\n"
+			"	ldr		r1,[r3,#4]				\n"	// R1 = svcparam[1];(MSGBLK#)
+			"	movw	r3,#:lower16:tcb		\n"	// R3 = &tcb;
+			"	movt	r3,#:upper16:tcb		\n"
+			"	add		r0,#2					\n"
+			"	ldrb	r2,[r3,r0]				\n"	// R2 = tcb[TASK#].msg_q;
+			"	cmp		r2,#0xff				\n"	// if (R2 == EOQ) {
+			"	bne		.L1700					\n"
+			"	strb	r1,[r3,r0]				\n"	//   tcb[TASK#].msg_q = MSGBLK#;
+			"	b		.L1702					\n"	// } else {
+			".L1700:							\n"
+			"	movw	r3,#:lower16:msgblk		\n"	//   R3 = &msgblk;
+			"	movt	r3,#:upper16:msgblk		\n"
+			".L1701:							\n"	//   while (1) {
+			"	ldrb	r0,[r3,r2, lsl #3]		\n"	//     R0 = msgblk[R2].link
+			"	cmp		r0,#0xff				\n"	//     if (R0 == EOQ)
+			"	beq		.L1702					\n"	//       break;
+			"	mov		r2,r0					\n"	//     R2 = R0;
+			"	b		.L1701					\n"	//   }
+			".L1702:							\n"	// }
+			"	strb	r1,[r3,r2, lsl #3]		\n"	// msgblk[R2].link = R1;
+			"	movw	r3,#:lower16:msgblk		\n"	// R3 = &msgblk;
+			"	movt	r3,#:upper16:msgblk		\n"
+			"	mov		r0,#0xff				\n"
+			"	strb	r0,[r3,r1, lsl #3]		\n"	// msgblk[R1].link = EOQ;
 			);
 			break;
 		case 0x18:	// MSGBLKRCV
-			asm (
-				"movw	r2,#:lower16:c_tasknum\n\t"	// R3 = &(tcb[c_tasknum].msg_q);
-				"movt	r2,#:upper16:c_tasknum\n\t"
-				"ldrb	r2,[r2,#0]\n\t"
-				"mov	r2,r2, lsl #4\n\t"
-				"add	r2,#2\n\t"
-				"movw	r3,#:lower16:tcb\n\t"
-				"movt	r3,#:upper16:tcb\n\t"
-				"add	r3,r2\n\t"
-
-				"ldrb	r0,[r3,#0]\n\t"			// R0 = tcb[c_tasknum].msg_q;
-				"cmp	r0,#0xff\n\t"			// if (R0 != EOQ) {
-				"beq	.L1800\n\t"
-				"movw	r2,#:lower16:msgblk\n\t"	//   tcb[c_tasknum].msg_q = msgblk[R0].link;
-				"movt	r2,#:upper16:msgblk\n\t"
-				"ldrb	r2,[r2,r0, lsl #3]\n\t"
-				"strb	r2,[r3,#0]\n\t"
-				".L1800:\n\t"				// }
-				"str	r0,[r1,#0]\n\t"			// return(R0);
+			asm(
+			"	movw	r2,#:lower16:c_tasknum	\n"	// R2 = &c_tasknum;
+			"	movt	r2,#:upper16:c_tasknum	\n"
+			"	ldrb	r2,[r2,#0]				\n"	// R2 = c_tasknum;
+			"	mov		r2,r2, lsl #4			\n"
+			"	add		r2,#2					\n"
+			"	movw	r3,#:lower16:tcb		\n"	// R3 = &tcb;
+			"	movt	r3,#:upper16:tcb		\n"
+			"	add		r3,r2					\n"	// R3 = &(tcb[c_tasknum].msg_q);
+			"	ldrb	r0,[r3,#0]				\n"	// R0 = tcb[c_tasknum].msg_q;
+			"	cmp		r0,#0xff				\n"	// if (R0 != EOQ) {
+			"	beq		.L1800					\n"
+			"	movw	r2,#:lower16:msgblk		\n"	//   R2 = &msgblk;
+			"	movt	r2,#:upper16:msgblk		\n"
+			"	ldrb	r2,[r2,r0, lsl #3]		\n"	//   R2 = &msgblk[R0];
+			"	strb	r2,[r3,#0]				\n"	//   tcb[c_tasknum].msg_q = msgblk[R0].link;
+			".L1800:							\n"	// }
+			"	str		r0,[r1,#0]				\n"	// return(R0);
 			);
 			break;
-		case	0x19:	// TASKIDGET
+		case 0x19:	// TASKIDGET
 			asm(
-				"movw	r0,#:lower16:c_tasknum\n\t"	// R0=c_tasknum
-				"movt	r0,#:upper16:c_tasknum\n\t"
-				"ldrb	r0,[r0,#0]\n\t"
-				"str	r0,[r1,#0]\n\t"			// return(R0);
+			"	movw	r0,#:lower16:c_tasknum	\n"	// R0 = &c_tasknum;
+			"	movt	r0,#:upper16:c_tasknum	\n"
+			"	ldrb	r0,[r0,#0]				\n"	// R0 = c_tasknum;
+			"	str		r0,[r1,#0]				\n"	// return(R0);
 			);
 			break;
 		case 0xf0:	// CHG_IDLE
 			tcb[c_tasknum].state = STATE_IDLE;
-			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSVを発生させてスケジューリング
+			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;	// PendSVを発生させてスケジューリング
 			break;
 		case 0xff:	// CHG_UNPRIVILEGE
 			asm(
-				"movw	r2,#:lower16:c_task\n\t"	// psp = *(c_task->sp);
-				"movt	r2,#:upper16:c_task\n\t"
-				"ldr	r0,[r2,#0]\n\t"
-				"ldr	r2,[r0,#4]\n\t"
-				"msr	psp,r2\n\t"
-				"orr	lr,lr,#4"			// LR |= 0x04;
-									// スレッドモードに移行
-									// 1001:msp使用(プロセス） 1101:psp使用（スレッド）
-									// なので、セットするとスレッドモードになる
+			"	movw	r2,#:lower16:c_task		\n"	// R2 = &c_task;
+			"	movt	r2,#:upper16:c_task		\n"
+			"	ldr		r0,[r2,#0]				\n"
+			"	ldr		r2,[r0,#4]				\n"
+			"	msr		psp,r2					\n"	// PSP = *(c_task->sp);
+			"	orr		lr,lr,#4				\n"	// LR |= 0x04;
+													// スレッドモードに移行
+													// 1001:msp使用(プロセス） 1101:psp使用（スレッド）
+													// なので、セットするとスレッドモードになる
 			);
-			task_start = 1;					// 以降はタスクスイッチング実行
-			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;		// PendSVを発生させる
+			task_start = 1;							// 以降はタスクスイッチング実行
+			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;	// PendSVを発生させる
 			break;
 		default:
 			break;
 	}
-	asm(	"add	sp,sp,#8\n\t"
-		"pop	{r7}\n\t"
-		"bx	lr\n\t"
+	asm(
+	"	add		sp,sp,#8				\n"	// SP += 8
+	"	pop		{r7}					\n"	// POP R7
+	"	bx		lr						\n"	// return;
 	);
 }
 
 
 //=======================================
-//= ここからはタスク			=
+//= ここからはタスク					=
 //=======================================
 //
 
 //===============================
-//=				=
-//= SVCの定義			=
-//=				=
+//=								=
+//= SVCの定義					=
+//=								=
 //===============================
 
 
@@ -640,22 +625,22 @@ void SVC_Handler()
 #define	SYSCALL_IDLE	asm("svc #0xf0\n\t")
 #define	SYSCALL_CHG_UNPRIVILEGE	asm("svc #0xff\n\t")
 
-#define SYSCALL_SLEEP(x)	{register int p0 asm("r0"); p0=x; asm ("svc #0x10"::"r"(p0));}
-#define	SYSCALL_TASKON(x)	{register int p0 asm("r0"); p0=x; asm ("svc #0x11"::"r"(p0));}
-#define	SYSCALL_TASKOFF(x)	{register int p0 asm("r0"); p0=x; asm ("svc #0x12"::"r"(p0));}
-#define	SYSCALL_SEMAGET(x)	{register int p0 asm("r0"); p0=x; asm ("svc #0x13"::"r"(p0));}
-#define	SYSCALL_SEMACLR(x)	{register int p0 asm("r0"); p0=x; asm ("svc #0x14"::"r"(p0));}
+#define SYSCALL_SLEEP(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x10"::"r"(p0));}
+#define	SYSCALL_TASKON(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x11"::"r"(p0));}
+#define	SYSCALL_TASKOFF(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x12"::"r"(p0));}
+#define	SYSCALL_SEMAGET(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x13"::"r"(p0));}
+#define	SYSCALL_SEMACLR(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x14"::"r"(p0));}
 #define	SYSCALL_MSGBLKGET	asm("svc #0x15\n\t")
-#define	SYSCALL_MSGBLKFREE(x)	{register int p0 asm("r0"); p0=x; asm ("svc #0x16"::"r"(p0));}
-#define	SYSCALL_MSGBLKSEND(tcb,msgblk)	{register int p0 asm("r0"); register int p1 asm ("r1"); p0=tcb; p1=msgblk;  asm ("svc #0x17"::"r"(p0),"r"(p1));}
+#define	SYSCALL_MSGBLKFREE(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x16"::"r"(p0));}
+#define	SYSCALL_MSGBLKSEND(tcb,msgblk)	{register int p0 asm("r0"); register int p1 asm("r1"); p0=tcb; p1=msgblk;  asm("svc #0x17"::"r"(p0),"r"(p1));}
 #define	SYSCALL_MSGBLKRCV	asm("svc #0x18\n\t")
 #define	SYSCALL_TASKIDGET	asm("svc #0x19\n\t")
 
 
 //===============================
-//=				=
-//= SVCインターフェースAPI	=
-//=				=
+//=								=
+//= SVCインターフェースAPI		=
+//=								=
 //===============================
 
 //
@@ -729,7 +714,7 @@ void SVC_TASKOFF(unsigned int tasknum)
 //
 unsigned char SVC_SEMAGET(unsigned char d)
 {
-	register unsigned int retval asm ("r0");	// retvalをR0レジスタに割付け
+	register unsigned int retval asm("r0");	// retvalをR0レジスタに割付け
 	SYSCALL_SEMAGET(d);
 	return(retval);
 }
@@ -780,7 +765,7 @@ void SVC_MSGBLKFREE(unsigned char d)
 }
 
 //
-// MSGBLKSND：指定したタスクにメッセージブロックを送信
+// MSGBLKSEND：指定したタスクにメッセージブロックを送信
 //
 void SVC_MSGBLKSEND(unsigned char tcbnum, unsigned char msgblk)
 {
@@ -978,11 +963,11 @@ int main_rtos(void)
 	task_start = 0;
 	c_tasknum = 0;
 	c_task = &tcb[c_tasknum];
-//	LPC_GPIO[LED_PORT]->DIR |= 1<<LED_BIT;
-//	LPC_GPIO[LED_PORT]->MASKED_ACCESS[1<<LED_BIT] = 0;
+//	GPIOB->MODER = (GPIOB->MODER & ~GPIO_MODER_MODE8_Msk) | GPIO_MODER_MODE8_0;
+//	GPIOB->BRR = GPIO_BRR_BR8_Msk;
 
 	pendsv_count = 0;
-	systick_count = 10;
+	systick_count = 100;
 //	SysTick_Config(SystemCoreClock/100);	// 1/100秒（=10ms）ごとにSysTick割り込み
 //	SysTick_Config(SystemCoreClock/10);	// 1/10秒（=100ms）ごとにSysTick割り込み
 	NVIC_SetPriority(SVCall_IRQn, 0x80);	// SVCの優先度は中ほど
@@ -995,12 +980,12 @@ int main_rtos(void)
 		while(systick_count)
 			;
 //		systick_count = 20;
-		systick_count = 2;
+		systick_count = 100;
 		SVC_LEDON();
 		while(systick_count)
 			;
 //		systick_count = 20;
-		systick_count = 2;
+		systick_count = 100;
 		SVC_LEDOFF();
 	}
 
