@@ -529,7 +529,7 @@ void SVC_Handler()
 			"	cmp		r2,#0xff				\n"	// if (R2 == EOQ) {
 			"	bne		.L1700					\n"
 			"	strb	r1,[r3,r0]				\n"	//   tcb[TASK#].msg_q = MSGBLK#;
-			"	b		.L1702					\n"	// } else {
+			"	b		.L1703					\n"	// } else {
 			".L1700:							\n"
 			"	movw	r3,#:lower16:msgblk		\n"	//   R3 = &msgblk;
 			"	movt	r3,#:upper16:msgblk		\n"
@@ -539,8 +539,9 @@ void SVC_Handler()
 			"	beq		.L1702					\n"	//       break;
 			"	mov		r2,r0					\n"	//     R2 = R0;
 			"	b		.L1701					\n"	//   }
-			".L1702:							\n"	// }
-			"	strb	r1,[r3,r2, lsl #3]		\n"	// msgblk[R2].link = R1;
+			".L1702:							\n"
+			"	strb	r1,[r3,r2, lsl #3]		\n"	//   msgblk[R2].link = MSGBLK#;
+			".L1703:							\n"	// }
 			"	movw	r3,#:lower16:msgblk		\n"	// R3 = &msgblk;
 			"	movt	r3,#:upper16:msgblk		\n"
 			"	mov		r0,#0xff				\n"
