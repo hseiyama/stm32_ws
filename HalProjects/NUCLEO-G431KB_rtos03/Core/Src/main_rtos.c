@@ -210,7 +210,7 @@ unsigned char tcbq_remove(unsigned char *queue, unsigned char tcbnum)
 	}
 	do {									// マッチするものを探すループ
 		ptasknum = ctasknum;				// PreviousにCurrentの値をコピー
-		if ((ctasknum = tcb[ptasknum].link) != EOQ)	// リンク先がEOQだったら
+		if ((ctasknum = tcb[ptasknum].link) == EOQ)	// リンク先がEOQだったら
 			return(EOQ);					// EOQを返す
 	} while(ctasknum != tcbnum);			// リンク先が一致するまでループ
 	tcb[ptasknum].link = tcb[ctasknum].link;	// ctasknumのリンクを繋ぎ替え
@@ -238,8 +238,7 @@ unsigned char process_taskon(unsigned char tasknum)
 //
 unsigned char process_taskoff(unsigned char tasknum)
 {
-	unsigned char c;
-	switch(c = tcb[tasknum].state) {
+	switch(tcb[tasknum].state) {
 		case STATE_READY:
 			tcbq_remove(&q_ready, tasknum);
 			tcb[tasknum].state = STATE_IDLE;
@@ -938,6 +937,8 @@ void regist_tcb(unsigned char tasknum, void(*task)(void))
 	p_stk->r_r0 = 0x00;
 	p_stk->r_r1 = 0x01;
 	p_stk->r_r2 = 0x02;
+	p_stk->r_r3 = 0x03;
+	p_stk->r_r12 = 0x12;
 	p_stk->r_lr = 0x00;
 	p_stk->r_pc = (unsigned int)(task);
 	p_stk->r_xpsr = 0x01000000;
