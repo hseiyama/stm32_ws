@@ -17,7 +17,6 @@
 // TODO: insert other definitions and declarations here
 
 
-
 //
 // Cortex-M3が例外発生時に自動的にPUSHするレジスタ類
 //
@@ -27,8 +26,8 @@ struct ESTK_STRUC {
 	unsigned int	r_r2;
 	unsigned int	r_r3;
 	unsigned int	r_r12;
-				// r13はSP
-	unsigned int	r_lr;	// r14	スレッド中のLR
+							// r13はSP
+	unsigned int	r_lr;	// r14 スレッド中のLR
 	unsigned int	r_pc;	// r15
 	unsigned int	r_xpsr;
 };
@@ -55,27 +54,27 @@ struct TSTK_STRUC {
 	unsigned int	r_r2;
 	unsigned int	r_r3;
 	unsigned int	r_r12;
-	unsigned int	r_lr;	// r14	スレッド中のLR
+	unsigned int	r_lr;	// r14 スレッド中のLR
 	unsigned int	r_pc;	// r15
 	unsigned int	r_xpsr;
 };
 typedef struct TSTK_STRUC TSTK;
 
-#define	TSTKSIZE	((sizeof (struct TSTK_STRUC))/sizeof (int))	// 各タスクが非スケジュール時に使用するスタックサイズ
-#define	ESTKSIZE	((sizeof (struct ESTK_STRUC))/sizeof (int))	// Cortex-M3が例外発生時に自動的に使用するスタックサイズ
-#define	UPUSHSIZE	(TSTKSIZE-ESTKSIZE)
+#define TSTKSIZE	((sizeof (struct TSTK_STRUC))/sizeof (int))	// 各タスクが非スケジュール時に使用するスタックサイズ
+#define ESTKSIZE	((sizeof (struct ESTK_STRUC))/sizeof (int))	// Cortex-M3が例外発生時に自動的に使用するスタックサイズ
+#define UPUSHSIZE	(TSTKSIZE-ESTKSIZE)
 
 //
-//　タスクの状態コード
+// タスクの状態コード
 //
-#define	STATE_FREE	0x00
-#define	STATE_IDLE	0x01
-#define	STATE_READY	0x02
-#define	STATE_SLEEP	0x03
+#define STATE_FREE	0x00
+#define STATE_IDLE	0x01
+#define STATE_READY	0x02
+#define STATE_SLEEP	0x03
 
-#define	EOQ	0xff	// End Of Queue：キューの最後であることを示す。
+#define EOQ			0xff	// End Of Queue：キューの最後であることを示す。
 
-#define	MAX_TASKNUM	8
+#define MAX_TASKNUM	8
 
 
 //
@@ -91,16 +90,16 @@ struct TCTRL_STRUC {
 	unsigned int	param2;
 };
 typedef struct TCTRL_STRUC TCTRL;	// typedefすると見た目がちょっと格好良いかもっていう程度
-TCTRL	tcb[MAX_TASKNUM];	// TCBをタスク数分確保
+TCTRL	tcb[MAX_TASKNUM];			// TCBをタスク数分確保
 
-#define	STKSIZE	64			// タスク用スタックサイズ（64ワード：256バイト）
+#define STKSIZE		64				// タスク用スタックサイズ（64ワード：256バイト）
 unsigned int	stk_task[MAX_TASKNUM][STKSIZE];	// タスク用スタックエリア
 
 
 //
 // セマフォ
 //
-#define	MAX_SEMA	8
+#define MAX_SEMA	8
 unsigned char semadat[MAX_SEMA];
 
 //
@@ -110,7 +109,7 @@ unsigned char semadat[MAX_SEMA];
 // 今回はメッセージブロックの総数が少ないので、実装の単純化を優先
 // して、毎回全メッセージブロックをスキャンすることにした
 //
-#define	MAX_MSGBLK	8
+#define MAX_MSGBLK	8
 struct MSGBLK_STRUC {
 	unsigned char	link;
 	unsigned char	param_c;
@@ -119,7 +118,6 @@ struct MSGBLK_STRUC {
 };
 typedef struct MSGBLK_STRUC MSGBLK;
 MSGBLK msgblk[MAX_MSGBLK];
-
 
 
 //
@@ -152,17 +150,17 @@ uint8_t UartRead(uint8_t *data)
 	return RetCode;
 }
 
+
 //===============================================
-//= 		TCB関係処理			=
+//= TCB関係処理									=
 //===============================================
 unsigned char	q_pending[2];	// 処理待ちタスク（ON/OFF処理などで使用）
-unsigned char	q_ready;	// 起動状態
-unsigned char	q_sleep;	// スリープ状態（タイマ待ち）
+unsigned char	q_ready;		// 起動状態
+unsigned char	q_sleep;		// スリープ状態（タイマ待ち）
 
-unsigned char task_start;
-unsigned char c_tasknum;	// 現在スケジュール中のタスク番号
-TCTRL	*c_task;
-
+unsigned char	task_start;
+unsigned char	c_tasknum;		// 現在スケジュール中のタスク番号
+TCTRL			*c_task;
 
 //
 // キューの最後に指定されたTCBをつなぐ
@@ -170,17 +168,17 @@ TCTRL	*c_task;
 unsigned char tcbq_append(unsigned char *queue, unsigned char tcbnum)
 {
 	unsigned char ctasknum, ptasknum;
-	if (tcbnum == EOQ)			// EOQだったらなにもしない
+	if (tcbnum == EOQ)						// EOQだったらなにもしない
 		return(EOQ);
-	if ((ctasknum = *queue) == EOQ) {	// いま接続されている先は無い
-		*queue = tcbnum;		// 与えられたTCBをつなぐ
+	if ((ctasknum = *queue) == EOQ) {		// いま接続されている先は無い
+		*queue = tcbnum;					// 与えられたTCBをつなぐ
 	} else {
-		do {				// 最後を探す
-			ptasknum = ctasknum;	// PreviousTCBにCurrentTCB番号を保存
+		do {								// 最後を探す
+			ptasknum = ctasknum;			// PreviousTCBにCurrentTCB番号を保存
 		} while((ctasknum = tcb[ptasknum].link) != EOQ);	// ptasknumが最後？
-		tcb[ptasknum].link = tcbnum;	// 最後のTCBに指定されたTCBをつなぐ
+		tcb[ptasknum].link = tcbnum;		// 最後のTCBに指定されたTCBをつなぐ
 	}
-	tcb[tcbnum].link = EOQ;			// キューの終わりになるので、EOQ
+	tcb[tcbnum].link = EOQ;					// キューの終わりになるので、EOQ
 	return(tcbnum);
 }
 
@@ -190,9 +188,9 @@ unsigned char tcbq_append(unsigned char *queue, unsigned char tcbnum)
 unsigned char tcbq_get(unsigned char *queue)
 {
 	unsigned char tcbnum;
-	if ((tcbnum = *queue) != EOQ)		// キューの先頭を取り出す
-		*queue = tcb[tcbnum].link;	// EOQでないなら、リンク先につなぎなおし
-	return(tcbnum);				// もし、キューの先頭がEOQならEOQが返るだけ
+	if ((tcbnum = *queue) != EOQ)			// キューの先頭を取り出す
+		*queue = tcb[tcbnum].link;			// EOQでないなら、リンク先につなぎなおし
+	return(tcbnum);							// もし、キューの先頭がEOQならEOQが返るだけ
 }
 
 //
@@ -200,20 +198,20 @@ unsigned char tcbq_get(unsigned char *queue)
 //
 unsigned char tcbq_remove(unsigned char *queue, unsigned char tcbnum)
 {
-	unsigned char ctasknum,ptasknum;
+	unsigned char ctasknum, ptasknum;
 	ctasknum = *queue;
-	if (tcbnum == EOQ)			// EOQだったらなにもしない
+	if (tcbnum == EOQ)						// EOQだったらなにもしない
 		return(EOQ);
-	if (ctasknum == EOQ)	// キューに何もつながってない
-		return(EOQ);	// ならEOQで終了
-	if (ctasknum == tcbnum) {	//　いきなり先頭
-		*queue = tcb[tcbnum].link;	// つなぎ変えて
-		return(ctasknum);		// 終了
+	if (ctasknum == EOQ)					// キューに何もつながってない
+		return(EOQ);						// ならEOQで終了
+	if (ctasknum == tcbnum) {				// いきなり先頭
+		*queue = tcb[tcbnum].link;			// つなぎ変えて
+		return(ctasknum);					// 終了
 	}
-	do {						// マッチするものを探すループ
-		ptasknum = ctasknum;			// PreviousにCurrentの値をコピー
+	do {									// マッチするものを探すループ
+		ptasknum = ctasknum;				// PreviousにCurrentの値をコピー
 		if ((ctasknum = tcb[ptasknum].link) != EOQ)	// リンク先がEOQだったら
-			return(EOQ);			// EOQを返す
+			return(EOQ);					// EOQを返す
 	} while(ctasknum != tcbnum);			// リンク先が一致するまでループ
 	tcb[ptasknum].link = tcb[ctasknum].link;	// ctasknumのリンクを繋ぎ替え
 	return(ctasknum);
@@ -226,9 +224,9 @@ unsigned char process_taskon(unsigned char tasknum)
 {
 	unsigned char c;
 	c = tcb[tasknum].state;
-	if ((c == STATE_FREE) || (c == STATE_IDLE)) {		// FreeかIdleのもの専用
+	if ((c == STATE_FREE) || (c == STATE_IDLE)) {	// FreeかIdleのもの専用
 		tcb[tasknum].state = STATE_READY;
-		tcbq_append(&q_ready,tasknum);
+		tcbq_append(&q_ready, tasknum);
 		return(tasknum);
 	}
 	return(EOQ);
@@ -236,17 +234,17 @@ unsigned char process_taskon(unsigned char tasknum)
 
 //
 // タスクOFF処理
-//　　指定されたタスクがREADYまたはSLEEP状態であれば、はずしてIDLEステートにする
+// 指定されたタスクがREADYまたはSLEEP状態であれば、外してIDLEステートにする
 //
 unsigned char process_taskoff(unsigned char tasknum)
 {
 	unsigned char c;
 	switch(c = tcb[tasknum].state) {
-		case	STATE_READY:
+		case STATE_READY:
 			tcbq_remove(&q_ready, tasknum);
 			tcb[tasknum].state = STATE_IDLE;
 			return(tasknum);
-		case	STATE_SLEEP:
+		case STATE_SLEEP:
 			tcbq_remove(&q_sleep, tasknum);
 			tcb[tasknum].state = STATE_IDLE;
 			return(tasknum);
@@ -262,13 +260,13 @@ void process_sleep(void)
 {
 	unsigned char tasknum;
 	tasknum = q_sleep;
-	while(tasknum != EOQ) {		// キューの最後までスキャン
-		if (tcb[tasknum].param1 == 0) {	//　タイムアップした
+	while(tasknum != EOQ) {					// キューの最後までスキャン
+		if (tcb[tasknum].param1 == 0) {		// タイムアップした
 			tcbq_remove(&q_sleep, tasknum);	// Sleep_Qから外す
 			tcb[tasknum].state = STATE_READY;	// READY状態にする
 			tcbq_append(&q_ready, tasknum);	// Ready_Qにつなぐ
 		} else {
-			tcb[tasknum].param1--;	// デクリメント
+			tcb[tasknum].param1--;			// デクリメント
 		}
 		tasknum = tcb[tasknum].link;
 	}
@@ -276,9 +274,9 @@ void process_sleep(void)
 
 
 //===============================================
-//= メッセージブロック関連処理			=
+//= メッセージブロック関連処理					=
 //===============================================
-unsigned char q_msgblk;
+unsigned char q_msgblk;			// フリー状態
 
 //
 // システムタイマ割り込みの処理
@@ -291,7 +289,7 @@ void SysTick_Handler()
 {
 	if (systick_count)
 		systick_count--;
-	
+
 	if (task_start) {
 		if (sticks)
 			sticks--;
@@ -322,7 +320,7 @@ unsigned int pendsv_count;
 unsigned char swstart = 0;
 void schedule(void)
 {
-	unsigned char ctasknum,ntasknum;
+	unsigned char ctasknum, ntasknum;
 	// デバッグ用にスイッチング回数をカウント
 	pendsv_count++;
 	// c_taskを切り替え（タスクスイッチング）
@@ -331,30 +329,30 @@ void schedule(void)
 			process_sleep();
 			rq_timer = 0;
 		}
-		if ((ctasknum = q_pending[0]) !=EOQ) {		// Pendingされているタスク制御処理がある
+		if ((ctasknum = q_pending[0]) !=EOQ) {	// Pendingされているタスク制御処理がある
 			switch(q_pending[1]) {
-				case STATE_READY:		// Ready状態にしたい
+				case STATE_READY:	// Ready状態にしたい
 					process_taskon(ctasknum);	// TASKON処理をする
 					break;
-				case STATE_IDLE:		// Idle状態にしたい
-					process_taskoff(ctasknum);
+				case STATE_IDLE:	// Idle状態にしたい
+					process_taskoff(ctasknum);	// TASKOFF処理をする
 					break;
 				default:
 					break;
 			}
-			q_pending[0] = EOQ;			// 処理したので、クリア
+			q_pending[0] = EOQ;				// 処理したので、クリア
 		}
-		ctasknum = c_tasknum;			// 今までスケジュールしていたタスク番号を退避
+		ctasknum = c_tasknum;				// 今までスケジュールしていたタスク番号を退避
 		ntasknum = tcbq_get(&q_ready);		// Ready_Qから取り出す
-		if (ntasknum == EOQ) {			// Ready_Qが無い
-			if (c_tasknum == EOQ)		// スケジュールしていたものもない！？？
-				c_tasknum = 0;		// ありえないけど、0にしておく
-		} else {					// Ready_Qにつながっていた
+		if (ntasknum == EOQ) {				// Ready_Qが無い
+			if (c_tasknum == EOQ)			// スケジュールしていたものもない！？？
+				c_tasknum = 0;				// ありえないけど、0にしておく
+		} else {							// Ready_Qにつながっていた
 			c_tasknum = ntasknum;			// Ready_Qから取り出したのをスケジュール状態にする
 			switch(tcb[ctasknum].state) {
-				case	STATE_READY:	tcbq_append(&q_ready, ctasknum); break;
-				case	STATE_SLEEP:	tcbq_append(&q_sleep, ctasknum); break;
-				default:		break;
+				case STATE_READY: tcbq_append(&q_ready, ctasknum); break;
+				case STATE_SLEEP: tcbq_append(&q_sleep, ctasknum); break;
+				default: break;
 			}
 		}
 		for (ctasknum = 0; ctasknum < MAX_TASKNUM; ctasknum++) {
@@ -610,7 +608,6 @@ void SVC_Handler()
 //=======================================
 //= ここからはタスク					=
 //=======================================
-//
 
 //===============================
 //=								=
@@ -618,24 +615,23 @@ void SVC_Handler()
 //=								=
 //===============================
 
+#define SYSCALL_NULL	asm("svc #0x00\n\t")
+#define SYSCALL_LEDOFF	asm("svc #0x01\n\t")
+#define SYSCALL_LEDON	asm("svc #0x02\n\t")
 
-#define	SYSCALL_NULL	asm("svc #0x00\n\t")
-#define	SYSCALL_LEDOFF	asm("svc #0x01\n\t")
-#define	SYSCALL_LEDON	asm("svc #0x02\n\t")
-
-#define	SYSCALL_IDLE	asm("svc #0xf0\n\t")
-#define	SYSCALL_CHG_UNPRIVILEGE	asm("svc #0xff\n\t")
+#define SYSCALL_IDLE	asm("svc #0xf0\n\t")
+#define SYSCALL_CHG_UNPRIVILEGE	asm("svc #0xff\n\t")
 
 #define SYSCALL_SLEEP(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x10"::"r"(p0));}
-#define	SYSCALL_TASKON(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x11"::"r"(p0));}
-#define	SYSCALL_TASKOFF(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x12"::"r"(p0));}
-#define	SYSCALL_SEMAGET(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x13"::"r"(p0));}
-#define	SYSCALL_SEMACLR(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x14"::"r"(p0));}
-#define	SYSCALL_MSGBLKGET	asm("svc #0x15\n\t")
-#define	SYSCALL_MSGBLKFREE(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x16"::"r"(p0));}
-#define	SYSCALL_MSGBLKSEND(tcb,msgblk)	{register int p0 asm("r0"); register int p1 asm("r1"); p0=tcb; p1=msgblk;  asm("svc #0x17"::"r"(p0),"r"(p1));}
-#define	SYSCALL_MSGBLKRCV	asm("svc #0x18\n\t")
-#define	SYSCALL_TASKIDGET	asm("svc #0x19\n\t")
+#define SYSCALL_TASKON(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x11"::"r"(p0));}
+#define SYSCALL_TASKOFF(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x12"::"r"(p0));}
+#define SYSCALL_SEMAGET(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x13"::"r"(p0));}
+#define SYSCALL_SEMACLR(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x14"::"r"(p0));}
+#define SYSCALL_MSGBLKGET	asm("svc #0x15\n\t")
+#define SYSCALL_MSGBLKFREE(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x16"::"r"(p0));}
+#define SYSCALL_MSGBLKSEND(tcb,msgblk)	{register int p0 asm("r0"); register int p1 asm("r1"); p0=tcb; p1=msgblk;  asm("svc #0x17"::"r"(p0),"r"(p1));}
+#define SYSCALL_MSGBLKRCV	asm("svc #0x18\n\t")
+#define SYSCALL_TASKIDGET	asm("svc #0x19\n\t")
 
 
 //===============================
@@ -659,7 +655,6 @@ void SVC_LEDOFF(void)
 {
 	SYSCALL_LEDOFF;
 }
-
 
 //
 // LEDON：ボード上のLEDを点灯する
@@ -711,7 +706,7 @@ void SVC_TASKOFF(unsigned int tasknum)
 
 //
 // SEMAGET：指定した番号のセマフォ取得要求
-//　セマフォが取れれば0、取れなければ0以外が返る
+// セマフォが取れれば0、取れなければ0以外が返る
 //
 unsigned char SVC_SEMAGET(unsigned char d)
 {
@@ -728,7 +723,6 @@ void SVC_SEMAGET_W(unsigned char d)
 	while(SVC_SEMAGET(d))
 		;
 }
-
 
 //
 // SEMACLR：指定した番号のセマフォをクリア（返却）
@@ -748,7 +742,9 @@ unsigned char SVC_MSGBLKGET()
 	return(c);
 }
 
+//
 // メッセージブロックが取得できるまでウェイトするタイプ
+//
 unsigned char SVC_MSGBLKGET_W()
 {
 	unsigned char c;
@@ -770,12 +766,12 @@ void SVC_MSGBLKFREE(unsigned char d)
 //
 void SVC_MSGBLKSEND(unsigned char tcbnum, unsigned char msgblk)
 {
-	SYSCALL_MSGBLKSEND(tcbnum,msgblk);
+	SYSCALL_MSGBLKSEND(tcbnum, msgblk);
 }
 
 //
 // MSGBLKRCV：メッセージ受信
-//　メッセージがあればメッセージ番号、無ければEOQ（0xff）が返る
+// メッセージがあればメッセージ番号、無ければEOQ（0xff）が返る
 //
 unsigned char SVC_MSGBLKRCV()
 {
@@ -784,9 +780,8 @@ unsigned char SVC_MSGBLKRCV()
 	return(c);
 }
 
-
 //
-// 
+// TASKIDGET：タスクID取得
 //
 unsigned char SVC_TASKIDGET()
 {
@@ -796,9 +791,9 @@ unsigned char SVC_TASKIDGET()
 }
 
 //===============================
-//=				=
-//=　タスク関数			=
-//=				=
+//=								=
+//= タスク関数					=
+//=								=
 //===============================
 
 unsigned char dbgdata[3];
@@ -855,10 +850,12 @@ void th_ledon()
 			mblk = SVC_MSGBLKRCV();
 		} while(mblk == EOQ);
 		switch(msgblk[mblk].param_c) {
-			case	0x00:	SVC_LEDOFF();
-					break;
-			case	0x01:	SVC_LEDON();
-					break;
+			case 0x00:
+				SVC_LEDOFF();
+				break;
+			case 0x01:
+				SVC_LEDON();
+				break;
 			default:
 				for (k=0; k<10; k++) {
 					SVC_LEDON();
@@ -879,9 +876,9 @@ void th_ledon()
 
 
 //===============================
-//=				=
-//=　スタートアップと初期化関数	=
-//=				=
+//=								=
+//= スタートアップと初期化関数	=
+//=								=
 //===============================
 
 //
@@ -901,7 +898,6 @@ void init_msgblk()
 	msgblk[MAX_MSGBLK-1].link = EOQ;
 }
 
-
 //
 // セマフォデータの初期化
 //
@@ -913,13 +909,13 @@ void init_semadat()
 }
 
 //
-//  TCBの初期化とタスク登録
+// TCBの初期化とタスク登録
 //
-//　XPSRのビット24は'1'にしないとハードエラーになるので注意
+// XPSRのビット24は'1'にしないとハードエラーになるので注意
 //
-//　スタックデータ作成時直接キャストしてアクセスすると
-//　コード生成を間違うようなので、一旦unsigned intに
-//　キャストして代入しなおした。
+// スタックデータ作成時直接キャストしてアクセスすると
+// コード生成を間違うようなので、一旦unsigned intに
+// キャストして代入しなおした。
 //
 unsigned int *p;
 TSTK	*p_stk;
@@ -937,7 +933,7 @@ void init_tcb()
 void regist_tcb(unsigned char tasknum, void(*task)(void))
 {
 	p = stk_task[tasknum];
-	p+=(STKSIZE-TSTKSIZE);
+	p += (STKSIZE-TSTKSIZE);
 	p_stk = (TSTK*)(p);
 	p_stk->r_r0 = 0x00;
 	p_stk->r_r1 = 0x01;
@@ -970,7 +966,7 @@ int main_rtos(void)
 	pendsv_count = 0;
 	systick_count = 100;
 //	SysTick_Config(SystemCoreClock/100);	// 1/100秒（=10ms）ごとにSysTick割り込み
-//	SysTick_Config(SystemCoreClock/10);	// 1/10秒（=100ms）ごとにSysTick割り込み
+//	SysTick_Config(SystemCoreClock/10);		// 1/10秒（=100ms）ごとにSysTick割り込み
 	NVIC_SetPriority(SVCall_IRQn, 0x80);	// SVCの優先度は中ほど
 	NVIC_SetPriority(SysTick_IRQn, 0xc0);	// SysTickの優先度はSVCより低く
 	NVIC_SetPriority(PendSV_IRQn, 0xff);	// PendSVの優先度を最低にしておく
@@ -990,8 +986,8 @@ int main_rtos(void)
 		SVC_LEDOFF();
 	}
 
-	//　この段階ではまだ特権モードであり、MSPが使われている
-	//　PSPプロセススタックは非特権モードで動いている状態
+	// この段階ではまだ特権モードであり、MSPが使われている
+	// PSPプロセススタックは非特権モードで動いている状態
 	// タスク#0（main()から直接切り替わって動くタスク）のスタック
 	// については、ユーザが積む分だけ削っておく
 	// CHG_UNPRIVILEGEでSVC=>PendSVの時にPSPに積みなおすことで
