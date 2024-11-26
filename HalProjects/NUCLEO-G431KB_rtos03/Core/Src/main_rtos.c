@@ -31,7 +31,7 @@ struct ESTK_STRUC {
 	unsigned int	r_pc;	// r15
 	unsigned int	r_xpsr;
 };
-typedef struct ESTK_STRUC	ESTK;
+typedef struct ESTK_STRUC	ESTK;	// 例外発生時のスタック
 
 //
 // タスクのスタック（タスクが非スケジュール状態の時のスタック上のデータ）
@@ -58,23 +58,23 @@ struct TSTK_STRUC {
 	unsigned int	r_pc;	// r15
 	unsigned int	r_xpsr;
 };
-typedef struct TSTK_STRUC TSTK;
+typedef struct TSTK_STRUC TSTK;		// タスクのスタック
 
-#define TSTKSIZE	((sizeof (struct TSTK_STRUC))/sizeof (int))	// 各タスクが非スケジュール時に使用するスタックサイズ
-#define ESTKSIZE	((sizeof (struct ESTK_STRUC))/sizeof (int))	// Cortex-M3が例外発生時に自動的に使用するスタックサイズ
+#define TSTKSIZE	((sizeof(struct TSTK_STRUC))/sizeof(int))	// 各タスクが非スケジュール時に使用するスタックサイズ
+#define ESTKSIZE	((sizeof(struct ESTK_STRUC))/sizeof(int))	// Cortex-M3が例外発生時に自動的に使用するスタックサイズ
 #define UPUSHSIZE	(TSTKSIZE-ESTKSIZE)
 
 //
 // タスクの状態コード
 //
-#define STATE_FREE	0x00
-#define STATE_IDLE	0x01
-#define STATE_READY	0x02
-#define STATE_SLEEP	0x03
+#define STATE_FREE	0x00	// フリー状態
+#define STATE_IDLE	0x01	// アイドル状態
+#define STATE_READY	0x02	// レディ状態
+#define STATE_SLEEP	0x03	// スリープ状態
 
 #define EOQ			0xff	// End Of Queue：キューの最後であることを示す。
 
-#define MAX_TASKNUM	8
+#define MAX_TASKNUM	8		// 最大動作タスク数（0番タスクを含む）
 
 
 //
@@ -99,8 +99,8 @@ unsigned int	stk_task[MAX_TASKNUM][STKSIZE];	// タスク用スタックエリ�
 //
 // セマフォ
 //
-#define MAX_SEMA	8
-unsigned char semadat[MAX_SEMA];
+#define MAX_SEMA	8				// 最大セマフォ数
+unsigned char	semadat[MAX_SEMA];	// セマフォデータ
 
 //
 // メッセージブロック
@@ -109,15 +109,15 @@ unsigned char semadat[MAX_SEMA];
 // 今回はメッセージブロックの総数が少ないので、実装の単純化を優先
 // して、毎回全メッセージブロックをスキャンすることにした
 //
-#define MAX_MSGBLK	8
+#define MAX_MSGBLK	8				// 最大メッセージブロック数
 struct MSGBLK_STRUC {
 	unsigned char	link;
 	unsigned char	param_c;
 	unsigned short	param_s;
 	unsigned int	param_i;
 };
-typedef struct MSGBLK_STRUC MSGBLK;
-MSGBLK msgblk[MAX_MSGBLK];
+typedef struct MSGBLK_STRUC MSGBLK;	// メッセージブロックの型定義
+MSGBLK msgblk[MAX_MSGBLK];			// メッセージブロック
 
 
 //
@@ -158,9 +158,9 @@ unsigned char	q_pending[2];	// 処理待ちタスク（ON/OFF処理などで使�
 unsigned char	q_ready;		// 起動状態
 unsigned char	q_sleep;		// スリープ状態（タイマ待ち）
 
-unsigned char	task_start;
+unsigned char	task_start;		// タスクスイッチング開始フラグ（タイマ割り込み用）
 unsigned char	c_tasknum;		// 現在スケジュール中のタスク番号
-TCTRL			*c_task;
+TCTRL			*c_task;		// 現在スケジュール中のタスクのTCBアドレス
 
 //
 // キューの最後に指定されたTCBをつなぐ
@@ -275,12 +275,12 @@ void process_sleep(void)
 //===============================================
 //= メッセージブロック関連処理					=
 //===============================================
-unsigned char q_msgblk;			// フリー状態
+unsigned char q_msgblk;			// フリー状態の管理キュー
 
 //
 // システムタイマ割り込みの処理
 //
-unsigned char rq_timer;
+unsigned char rq_timer;			// タイマ割り込み発生フラグ
 
 unsigned int systick_count;
 unsigned int sticks = 3;
@@ -316,7 +316,7 @@ unsigned int pendsv_count;
 // コンパイラがどれだけスタック領域を使うのかは実際__attribute__を外してコンパイル
 // してみて確認するしかない。
 //
-unsigned char swstart = 0;
+unsigned char swstart = 0;		// 初回タスクスイッチの判定用
 void schedule(void)
 {
 	unsigned char ctasknum, ntasknum;
@@ -324,10 +324,12 @@ void schedule(void)
 	pendsv_count++;
 	// c_taskを切り替え（タスクスイッチング）
 	if (swstart) {
+		// スリープ処理（タイマ割り込みが発生している場合）
 		if (rq_timer) {
 			process_sleep();
 			rq_timer = 0;
 		}
+		// タスクのON/OFF処理（SVCからタスクのON/OFF要求がある場合）
 		if ((ctasknum = q_pending[0]) !=EOQ) {	// Pendingされているタスク制御処理がある
 			switch(q_pending[1]) {
 				case STATE_READY:	// Ready状態にしたい
@@ -341,6 +343,7 @@ void schedule(void)
 			}
 			q_pending[0] = EOQ;				// 処理したので、クリア
 		}
+		// 次に動かすべきタスクの選択
 		ctasknum = c_tasknum;				// 今までスケジュールしていたタスク番号を退避
 		ntasknum = tcbq_get(&q_ready);		// Ready_Qから取り出す
 		if (ntasknum == EOQ) {				// Ready_Qが無い
@@ -348,16 +351,19 @@ void schedule(void)
 				c_tasknum = 0;				// ありえないけど、0にしておく
 		} else {							// Ready_Qにつながっていた
 			c_tasknum = ntasknum;			// Ready_Qから取り出したのをスケジュール状態にする
+			// 現在動作中のタスクの遷移
 			switch(tcb[ctasknum].state) {
 				case STATE_READY: tcbq_append(&q_ready, ctasknum); break;
 				case STATE_SLEEP: tcbq_append(&q_sleep, ctasknum); break;
 				default: break;
 			}
 		}
+		// アイドル状態でメッセージ受信しているタスクがあればレディ状態にする
 		for (ctasknum = 0; ctasknum < MAX_TASKNUM; ctasknum++) {
 			if ((tcb[ctasknum].state == STATE_IDLE) && (tcb[ctasknum].msg_q != EOQ))
 				process_taskon(ctasknum);
 		}
+	// OS起動直後は強制的に0番タスクを起動するため、タスクスイッチを処理しない
 	} else {
 		swstart = 1;
 	}
@@ -404,8 +410,8 @@ void PendSV_Handler()
 	);
 }
 
-unsigned int svcop;
-unsigned int svcparam[2];
+unsigned int svcop;				// SVC命令の保存用
+unsigned int svcparam[2];		// SVCコマンドのパラメータ用
 void SVC_Handler(void) __attribute__ ((naked));
 void SVC_Handler()
 {
@@ -795,7 +801,7 @@ unsigned char SVC_TASKIDGET()
 //=								=
 //===============================
 
-unsigned char dbgdata[3];
+unsigned char dbgdata[3];		// デバッグ用
 void th_zero()
 {
 	uint8_t RcvData;
@@ -916,8 +922,8 @@ void init_semadat()
 // コード生成を間違うようなので、一旦unsigned intに
 // キャストして代入しなおした。
 //
-unsigned int *p;
-TSTK	*p_stk;
+unsigned int *p;				// アドレス計算用
+TSTK	*p_stk;					// タスクのスタック領域用のポインタ
 
 void init_tcb()
 {
