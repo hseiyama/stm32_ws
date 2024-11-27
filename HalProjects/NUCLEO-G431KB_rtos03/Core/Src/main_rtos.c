@@ -433,10 +433,9 @@ void SVC_Handler()
 	"	movw	r2,#:lower16:svcop		\n"	// R2 = &svcop;
 	"	movt	r2,#:upper16:svcop		\n"
 	"	str		r0,[r2,#0]				\n"	// svcop = R0;		// svcop変数にコピー
-
-	"	push	{r7}					\n"	// PUSH R7			// C言語でフレームポインタにR7を使っているため
-	"	sub		sp,sp,#8				\n"	// SP -= 8;			// (4バイト×2個分）：C言語側で２ワード分使っていたため
-	"	mov		r7,sp					\n"	// R7 = SP;
+//	"	push	{r7}					\n"	// PUSH R7			// C言語でフレームポインタにR7を使っているため
+//	"	sub		sp,sp,#8				\n"	// SP -= 8;			// (4バイト×2個分）：C言語側で２ワード分使っていたため
+//	"	mov		r7,sp					\n"	// R7 = SP;
 	);
 
 	switch(svcop & 0xff) {							// SVCの引数（リクエストコード）を取得
@@ -591,6 +590,12 @@ void SVC_Handler()
 			"	ldr		r0,[r2,#0]				\n"
 			"	ldr		r2,[r0,#4]				\n"
 			"	msr		psp,r2					\n"	// PSP = *(c_task->sp);
+													// SVCall例外からタスク#0に復帰した際、
+													// PSPがスタック開始位置になるよう調整済
+			"	mrs		r0,control				\n"
+			"	orr		r0,#1					\n"
+			"	msr		control,r0				\n"	// CONTROL |= 0x01;
+													// スレッドモードの特権レベルを非特権に変更
 			"	orr		lr,lr,#4				\n"	// LR |= 0x04;
 													// スレッドモードに移行
 													// 1001:msp使用(プロセス） 1101:psp使用（スレッド）
@@ -603,8 +608,8 @@ void SVC_Handler()
 			break;
 	}
 	asm(
-	"	add		sp,sp,#8				\n"	// SP += 8
-	"	pop		{r7}					\n"	// POP R7
+//	"	add		sp,sp,#8				\n"	// SP += 8
+//	"	pop		{r7}					\n"	// POP R7
 	"	bx		lr						\n"	// return;
 	);
 }
