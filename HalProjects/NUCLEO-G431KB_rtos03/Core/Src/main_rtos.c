@@ -76,6 +76,9 @@ typedef struct TSTK_STRUC TSTK;		// タスクのスタック
 
 #define MAX_TASKNUM	8		// 最大動作タスク数（0番タスクを含む）
 
+#define PRIVILEGE	0		// 特権
+#define UNPRIVILEGE	1		// 非特権
+
 
 //
 // TCB（Task Control Block)の定義
@@ -84,9 +87,9 @@ struct TCTRL_STRUC {
 	unsigned char	link;
 	unsigned char	state;
 	unsigned char	msg_q;
-	unsigned char	param0;
+	unsigned char	privilege;	// タスクの特権レベル
 	TSTK			*sp;
-	unsigned int	param1;
+	unsigned int	slp_timer;	// スリープ判定用のタイマ
 	unsigned int	param2;
 };
 typedef struct TCTRL_STRUC TCTRL;	// typedefすると見た目がちょっと格好良いかもっていう程度
@@ -260,12 +263,12 @@ void process_sleep(void)
 	unsigned char tasknum;
 	tasknum = q_sleep;
 	while(tasknum != EOQ) {					// キューの最後までスキャン
-		if (tcb[tasknum].param1 == 0) {		// タイムアップした
+		if (tcb[tasknum].slp_timer == 0) {	// タイムアップした
 			tcbq_remove(&q_sleep, tasknum);	// Sleep_Qから外す
 			tcb[tasknum].state = STATE_READY;	// READY状態にする
 			tcbq_append(&q_ready, tasknum);	// Ready_Qにつなぐ
 		} else {
-			tcb[tasknum].param1--;			// デクリメント
+			tcb[tasknum].slp_timer--;		// デクリメント
 		}
 		tasknum = tcb[tasknum].link;
 	}
@@ -377,17 +380,17 @@ void PendSV_Handler()
 	// ・自動退避されない汎用レジスタをR12でstmdb(Dec. Before)を使ってPSP上に退避
 	// ・c_task（現在実行中のタスクのTCBをさしている）にR12を退避
 	// を実行
-	asm(									// R12をワーク用スタックとして利用
+	__asm volatile (						// R12をワーク用スタックとして利用
 	"	mrs		r12,psp					\n"	// R12 = PSP;
 	"	stmdb	r12!,{r4-r11}			\n"	// 自動退避されないR4～R11を退避
 	"	movw	r2,#:lower16:c_task		\n"	// R2 = &c_task;
 	"	movt	r2,#:upper16:c_task		\n"
 	"	ldr		r0,[r2,#0]				\n"
-	"	str		r12,[r0,#4]				\n"	// *(ctask->sp) = R12;
+	"	str		r12,[r0,#4]				\n"	// ctask->sp = R12;
 	);
 
 	// 次にスケジュールするタスクの選択
-	asm(
+	__asm volatile (
 	"	push	{lr}					\n"
 	"	bl		schedule				\n"
 	"	pop		{lr}					\n"
@@ -399,11 +402,17 @@ void PendSV_Handler()
 	// ・R12を取り出し
 	// ・汎用レジスタを復旧（ldmia(Inc. After)を利用）
 	// 元に戻る
-	asm(
+	__asm volatile (
 	"	movw	r2,#:lower16:c_task		\n"	// R2 = &c_task;
 	"	movt	r2,#:upper16:c_task		\n"
 	"	ldr		r0,[r2,#0]				\n"
-	"	ldr		r12,[r0,#4]				\n"	// R12 = *(c_task->sp);
+	"	ldrb	r2,[r0,#3]				\n"	// R2 = c_task->privilege;
+	"	mrs		r1,control				\n"
+	"	and		r1,#0xfffffffe			\n"
+	"	orr		r1,r2					\n"	// CONTROL &= 0xFFFFFFFE;
+	"	msr		control,r1				\n"	// CONTROL |= c_task->privilege;
+											// スレッドモードの特権レベルを変更
+	"	ldr		r12,[r0,#4]				\n"	// R12 = c_task->sp;
 	"	ldmia	r12!,{r4-r11}			\n"	// 退避したR4～R11を復帰
 	"	msr		psp,r12					\n"	// PSP = R12;
 	"	bx		lr						\n"	// return;
@@ -415,7 +424,7 @@ unsigned int svcparam[2];		// SVCコマンドのパラメータ用
 void SVC_Handler(void) __attribute__ ((naked));
 void SVC_Handler()
 {
-	asm(
+	__asm volatile (
 	"	movw	r2,#:lower16:svcparam	\n"	// R2 = &svcparam;
 	"	movt	r2,#:upper16:svcparam	\n"
 	"	str		r0,[r2,#0]				\n"	// svcparam[0] = R0;
@@ -449,7 +458,7 @@ void SVC_Handler()
 			GPIOB->BSRR = GPIO_BSRR_BS8_Msk;
 			break;
 		case 0x10:	// SLEEP
-			tcb[c_tasknum].param1 = svcparam[0];	// パラメータを積んで
+			tcb[c_tasknum].slp_timer = svcparam[0];	// パラメータを積んで
 			tcb[c_tasknum].state = STATE_SLEEP;		// スリープ状態にしておく
 			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;	// PendSVを発生させてスケジューリング
 			break;
@@ -464,7 +473,7 @@ void SVC_Handler()
 			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;	// PendSVを発生させてスケジューリング
 			break;
 		case 0x13:	// SEMAGET(data#)
-			asm(
+			__asm volatile (
 			"	movw	r2,#:lower16:svcparam	\n"	// R2 = &svcparam;
 			"	movt	r2,#:upper16:svcparam	\n"
 			"	ldr		r0,[r2,#0]				\n"	// R0 = svcparam[0];(DATA#)
@@ -485,7 +494,7 @@ void SVC_Handler()
 			semadat[svcparam[0]] = 0;
 			break;
 		case 0x15:	// MSGBLKGET
-			asm(
+			__asm volatile (
 			"	movw	r3,#:lower16:q_msgblk	\n"	// R3 = &q_msgblk;
 			"	movt	r3,#:upper16:q_msgblk	\n"
 			"	ldrb	r0,[r3,#0]				\n"	// R0 = q_msgblk;
@@ -504,7 +513,7 @@ void SVC_Handler()
 			);
 			break;
 		case 0x16:	// MSGBLKFREE(data#)
-			asm(
+			__asm volatile (
 			"	movw	r2,#:lower16:svcparam	\n"	// R2 = &svcparam;
 			"	movt	r2,#:upper16:svcparam	\n"
 			"	ldrb	r1,[r2,#0]				\n"	// R1 = svcparam[0];(DATA#)
@@ -518,7 +527,7 @@ void SVC_Handler()
 			);
 			break;
 		case 0x17:	// MSGBLKSEND(task#, msgblk#)
-			asm(
+			__asm volatile (
 			"	movw	r3,#:lower16:svcparam	\n"	// R3 = &svcparam;
 			"	movt	r3,#:upper16:svcparam	\n"
 			"	ldr		r0,[r3,#0]				\n"	// R0 = svcparam[0];(TASK#)
@@ -551,7 +560,7 @@ void SVC_Handler()
 			);
 			break;
 		case 0x18:	// MSGBLKRCV
-			asm(
+			__asm volatile (
 			"	movw	r2,#:lower16:c_tasknum	\n"	// R2 = &c_tasknum;
 			"	movt	r2,#:upper16:c_tasknum	\n"
 			"	ldrb	r2,[r2,#0]				\n"	// R2 = c_tasknum;
@@ -572,7 +581,7 @@ void SVC_Handler()
 			);
 			break;
 		case 0x19:	// TASKIDGET
-			asm(
+			__asm volatile (
 			"	movw	r0,#:lower16:c_tasknum	\n"	// R0 = &c_tasknum;
 			"	movt	r0,#:upper16:c_tasknum	\n"
 			"	ldrb	r0,[r0,#0]				\n"	// R0 = c_tasknum;
@@ -584,18 +593,20 @@ void SVC_Handler()
 			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;	// PendSVを発生させてスケジューリング
 			break;
 		case 0xff:	// CHG_UNPRIVILEGE
-			asm(
+			__asm volatile (
 			"	movw	r2,#:lower16:c_task		\n"	// R2 = &c_task;
 			"	movt	r2,#:upper16:c_task		\n"
 			"	ldr		r0,[r2,#0]				\n"
+			"	ldrb	r2,[r0,#3]				\n"	// R2 = c_task->privilege;
+			"	mrs		r1,control				\n"
+			"	and		r1,#0xfffffffe			\n"
+			"	orr		r1,r2					\n"	// CONTROL &= 0xFFFFFFFE;
+			"	msr		control,r1				\n"	// CONTROL |= c_task->privilege;
+													// スレッドモードの特権レベルを変更
 			"	ldr		r2,[r0,#4]				\n"
-			"	msr		psp,r2					\n"	// PSP = *(c_task->sp);
+			"	msr		psp,r2					\n"	// PSP = c_task->sp;
 													// SVCall例外からタスク#0に復帰した際、
 													// PSPがスタック開始位置になるよう調整済
-			"	mrs		r0,control				\n"
-			"	orr		r0,#1					\n"
-			"	msr		control,r0				\n"	// CONTROL |= 0x01;
-													// スレッドモードの特権レベルを非特権に変更
 			"	orr		lr,lr,#4				\n"	// LR |= 0x04;
 													// スレッドモードに移行
 													// 1001:msp使用(プロセス） 1101:psp使用（スレッド）
@@ -607,7 +618,7 @@ void SVC_Handler()
 		default:
 			break;
 	}
-	asm(
+	__asm volatile (
 //	"	add		sp,sp,#8				\n"	// SP += 8
 //	"	pop		{r7}					\n"	// POP R7
 	"	bx		lr						\n"	// return;
@@ -625,23 +636,23 @@ void SVC_Handler()
 //=								=
 //===============================
 
-#define SYSCALL_NULL	asm("svc #0x00\n\t")
-#define SYSCALL_LEDOFF	asm("svc #0x01\n\t")
-#define SYSCALL_LEDON	asm("svc #0x02\n\t")
+#define SYSCALL_NULL	__asm volatile ("svc #0x00")
+#define SYSCALL_LEDOFF	__asm volatile ("svc #0x01")
+#define SYSCALL_LEDON	__asm volatile ("svc #0x02")
 
-#define SYSCALL_IDLE	asm("svc #0xf0\n\t")
-#define SYSCALL_CHG_UNPRIVILEGE	asm("svc #0xff\n\t")
+#define SYSCALL_IDLE	__asm volatile ("svc #0xf0")
+#define SYSCALL_CHG_UNPRIVILEGE	__asm volatile ("svc #0xff")
 
-#define SYSCALL_SLEEP(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x10"::"r"(p0));}
-#define SYSCALL_TASKON(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x11"::"r"(p0));}
-#define SYSCALL_TASKOFF(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x12"::"r"(p0));}
-#define SYSCALL_SEMAGET(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x13"::"r"(p0));}
-#define SYSCALL_SEMACLR(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x14"::"r"(p0));}
-#define SYSCALL_MSGBLKGET	asm("svc #0x15\n\t")
-#define SYSCALL_MSGBLKFREE(x)	{register int p0 asm("r0"); p0=x; asm("svc #0x16"::"r"(p0));}
-#define SYSCALL_MSGBLKSEND(tcb,msgblk)	{register int p0 asm("r0"); register int p1 asm("r1"); p0=tcb; p1=msgblk;  asm("svc #0x17"::"r"(p0),"r"(p1));}
-#define SYSCALL_MSGBLKRCV	asm("svc #0x18\n\t")
-#define SYSCALL_TASKIDGET	asm("svc #0x19\n\t")
+#define SYSCALL_SLEEP(x)	{register int p0 __asm("r0"); p0=x; __asm volatile ("svc #0x10"::"r"(p0));}
+#define SYSCALL_TASKON(x)	{register int p0 __asm("r0"); p0=x; __asm volatile ("svc #0x11"::"r"(p0));}
+#define SYSCALL_TASKOFF(x)	{register int p0 __asm("r0"); p0=x; __asm volatile ("svc #0x12"::"r"(p0));}
+#define SYSCALL_SEMAGET(x)	{register int p0 __asm("r0"); p0=x; __asm volatile ("svc #0x13"::"r"(p0));}
+#define SYSCALL_SEMACLR(x)	{register int p0 __asm("r0"); p0=x; __asm volatile ("svc #0x14"::"r"(p0));}
+#define SYSCALL_MSGBLKGET	__asm volatile ("svc #0x15")
+#define SYSCALL_MSGBLKFREE(x)	{register int p0 __asm("r0"); p0=x; __asm volatile ("svc #0x16"::"r"(p0));}
+#define SYSCALL_MSGBLKSEND(tcb,msgblk)	{register int p0 __asm("r0"); register int p1 __asm("r1"); p0=tcb; p1=msgblk; __asm volatile ("svc #0x17"::"r"(p0),"r"(p1));}
+#define SYSCALL_MSGBLKRCV	__asm volatile ("svc #0x18")
+#define SYSCALL_TASKIDGET	__asm volatile ("svc #0x19")
 
 
 //===============================
@@ -720,7 +731,7 @@ void SVC_TASKOFF(unsigned int tasknum)
 //
 unsigned char SVC_SEMAGET(unsigned char d)
 {
-	register unsigned int retval asm("r0");	// retvalをR0レジスタに割付け
+	register unsigned int retval __asm("r0");	// retvalをR0レジスタに割付け
 	SYSCALL_SEMAGET(d);
 	return(retval);
 }
@@ -747,7 +758,7 @@ void SVC_SEMACLR(unsigned char d)
 //
 unsigned char SVC_MSGBLKGET()
 {
-	register unsigned char c asm("r0");
+	register unsigned char c __asm("r0");
 	SYSCALL_MSGBLKGET;
 	return(c);
 }
@@ -785,7 +796,7 @@ void SVC_MSGBLKSEND(unsigned char tcbnum, unsigned char msgblk)
 //
 unsigned char SVC_MSGBLKRCV()
 {
-	register unsigned char c asm("r0");
+	register unsigned char c __asm("r0");
 	SYSCALL_MSGBLKRCV;
 	return(c);
 }
@@ -795,7 +806,7 @@ unsigned char SVC_MSGBLKRCV()
 //
 unsigned char SVC_TASKIDGET()
 {
-	register unsigned char c asm("r0");
+	register unsigned char c __asm("r0");
 	SYSCALL_TASKIDGET;
 	return(c);
 }
@@ -937,6 +948,8 @@ void init_tcb()
 		tcb[tasknum].state = STATE_FREE;
 		tcb[tasknum].link = EOQ;
 		tcb[tasknum].msg_q = EOQ;
+		tcb[tasknum].privilege = PRIVILEGE;
+		tcb[tasknum].slp_timer = 0;
 	}
 }
 
@@ -946,10 +959,10 @@ void regist_tcb(unsigned char tasknum, void(*task)(void))
 	p += (STKSIZE-TSTKSIZE);
 	p_stk = (TSTK*)(p);
 	p_stk->r_r0 = 0x00;
-	p_stk->r_r1 = 0x01;
-	p_stk->r_r2 = 0x02;
-	p_stk->r_r3 = 0x03;
-	p_stk->r_r12 = 0x12;
+	p_stk->r_r1 = 0x00;
+	p_stk->r_r2 = 0x00;
+	p_stk->r_r3 = 0x00;
+	p_stk->r_r12 = 0x00;
 	p_stk->r_lr = 0x00;
 	p_stk->r_pc = (unsigned int)(task);
 	p_stk->r_xpsr = 0x01000000;
@@ -1008,15 +1021,18 @@ int main_rtos(void)
 	q_sleep = EOQ;
 	q_pending[0] = EOQ;
 
-	regist_tcb(0,th_zero);
+	regist_tcb(0, th_zero);
 	tcb[0].sp = (TSTK *)(((unsigned int *)tcb[0].sp)+UPUSHSIZE);
 	tcb[0].state = STATE_READY;
+	tcb[0].privilege = PRIVILEGE;
 
-	regist_tcb(1,th_blink);
+	regist_tcb(1, th_blink);
 	tcb[1].state = STATE_READY;
+	tcb[1].privilege = UNPRIVILEGE;
 
-	regist_tcb(2,th_ledon);
+	regist_tcb(2, th_ledon);
 	tcb[2].state = STATE_IDLE;
+	tcb[2].privilege = UNPRIVILEGE;
 
 	// Ready_Qにつないでおく
 	// 最初は#0が動くことにしたので、#0はいきなりCurrentTASKになるため、
