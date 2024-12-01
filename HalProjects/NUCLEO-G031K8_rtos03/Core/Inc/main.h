@@ -41,7 +41,7 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-
+extern UART_HandleTypeDef huart2;
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
@@ -53,7 +53,7 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+extern int main_rtos(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -67,7 +67,8 @@ void Error_Handler(void);
 #define T_JTCK_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
-
+#define OK (1)
+#define NG (0)
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

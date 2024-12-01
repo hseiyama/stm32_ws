@@ -880,11 +880,11 @@ void th_ledon()
 			default:
 				for (k=0; k<10; k++) {
 					SVC_LEDON();
-					for (i=0; i<3; i++)
+					for (i=0; i<7; i++)
 						for (j=0; j<0xfffe; j++)
 							;
 					SVC_LEDOFF();
-					for (i=0; i<3; i++)
+					for (i=0; i<7; i++)
 						for (j=0; j<0xfffe; j++)
 							;
 				}

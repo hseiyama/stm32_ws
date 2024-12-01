@@ -382,18 +382,33 @@ void PendSV_Handler()
 	// を実行
 	__asm volatile (						// R12をワーク用スタックとして利用
 	"	mrs		r12,psp					\n"	// R12 = PSP;
-	"	stmdb	r12!,{r4-r11}			\n"	// 自動退避されないR4～R11を退避
-	"	movw	r2,#:lower16:c_task		\n"	// R2 = &c_task;
-	"	movt	r2,#:upper16:c_task		\n"
+//	"	stmdb	r12!,{r4-r11}			\n"	// 自動退避されないR4～R11を退避
+	"	mov		r0,r12					\n"	// 自動退避されないR4～R11を退避
+	"	sub		r0,#32					\n"
+	"	stmia	r0!,{r4-r7}				\n"
+	"	mov		r4,r8					\n"
+	"	mov		r5,r9					\n"
+	"	mov		r6,r10					\n"
+	"	mov		r7,r11					\n"
+	"	stmia	r0!,{r4-r7}				\n"
+	"	sub		r0,#32					\n"
+	"	mov		r12,r0					\n"
+//	"	movw	r2,#:lower16:c_task		\n"	// R2 = &c_task;
+//	"	movt	r2,#:upper16:c_task		\n"
+	"	ldr		r2,c_taskConst1			\n"	// R2 = &c_task;
 	"	ldr		r0,[r2,#0]				\n"
-	"	str		r12,[r0,#4]				\n"	// ctask->sp = R12;
+//	"	str		r12,[r0,#4]				\n"	// ctask->sp = R12;
+	"	mov		r1,r12					\n"	// ctask->sp = R12;
+	"	str		r1,[r0,#4]				\n"
 	);
 
 	// 次にスケジュールするタスクの選択
 	__asm volatile (
 	"	push	{lr}					\n"
 	"	bl		schedule				\n"
-	"	pop		{lr}					\n"
+//	"	pop		{lr}					\n"
+	"	pop		{r0}					\n"
+	"	mov		lr,r0					\n"
 	);
 
 	// 後半部分では
@@ -403,19 +418,40 @@ void PendSV_Handler()
 	// ・汎用レジスタを復旧（ldmia(Inc. After)を利用）
 	// 元に戻る
 	__asm volatile (
-	"	movw	r2,#:lower16:c_task		\n"	// R2 = &c_task;
-	"	movt	r2,#:upper16:c_task		\n"
+//	"	movw	r2,#:lower16:c_task		\n"	// R2 = &c_task;
+//	"	movt	r2,#:upper16:c_task		\n"
+	"	ldr		r2,c_taskConst1			\n"	// R2 = &c_task;
 	"	ldr		r0,[r2,#0]				\n"
 	"	ldrb	r2,[r0,#3]				\n"	// R2 = c_task->privilege;
 	"	mrs		r1,control				\n"
-	"	and		r1,#0xfffffffe			\n"
+//	"	and		r1,#0xfffffffe			\n"
+	"	ldr		r3,PRIVILEGE_MASK1		\n"
+	"	and		r1,r3					\n"
 	"	orr		r1,r2					\n"	// CONTROL &= 0xFFFFFFFE;
 	"	msr		control,r1				\n"	// CONTROL |= c_task->privilege;
 											// スレッドモードの特権レベルを変更
-	"	ldr		r12,[r0,#4]				\n"	// R12 = c_task->sp;
-	"	ldmia	r12!,{r4-r11}			\n"	// 退避したR4～R11を復帰
+//	"	ldr		r12,[r0,#4]				\n"	// R12 = c_task->sp;
+	"	ldr		r1,[r0,#4]				\n"	// R12 = c_task->sp;
+	"	mov		r12,r1					\n"
+//	"	ldmia	r12!,{r4-r11}			\n"	// 退避したR4～R11を復帰
+	"	mov		r0,r12					\n"	// 退避したR4～R11を復帰
+	"	add		r0,#16					\n"
+	"	ldmia	r0!,{r4-r7}				\n"
+	"	mov		r8,r4					\n"
+	"	mov		r9,r5					\n"
+	"	mov		r10,r6					\n"
+	"	mov		r11,r7					\n"
+	"	sub		r0,#32					\n"
+	"	ldmia	r0!,{r4-r7}				\n"
+	"	add		r0,#16					\n"
+	"	mov		r12,r0					\n"
 	"	msr		psp,r12					\n"	// PSP = R12;
 	"	bx		lr						\n"	// return;
+	"	.align	4						\n"
+	"c_taskConst1:						\n"
+	"	.word	c_task					\n"
+	"PRIVILEGE_MASK1:					\n"
+	"	.word	0xfffffffe				\n"
 	);
 }
 
@@ -425,12 +461,15 @@ void SVC_Handler(void) __attribute__ ((naked));
 void SVC_Handler()
 {
 	__asm volatile (
-	"	movw	r2,#:lower16:svcparam	\n"	// R2 = &svcparam;
-	"	movt	r2,#:upper16:svcparam	\n"
+//	"	movw	r2,#:lower16:svcparam	\n"	// R2 = &svcparam;
+//	"	movt	r2,#:upper16:svcparam	\n"
+	"	ldr		r2,svcparamConst1		\n"	// R2 = &svcparam;
 	"	str		r0,[r2,#0]				\n"	// svcparam[0] = R0;
 	"	str		r1,[r2,#4]				\n"	// svcparam[1] = R1;
 	"	mov		r0,lr					\n"	// if ((LR & 0x04) != 0) {
-	"	ands	r0,#4					\n"	//					// LRのビット4が'0'ならハンドラモードでSVC
+//	"	ands	r0,#4					\n"	//					// LRのビット4が'0'ならハンドラモードでSVC
+	"	mov		r1,#4					\n"	//					// LRのビット4が'0'ならハンドラモードでSVC
+	"	and		r0,r1					\n"
 	"	beq		.L0000					\n"	//					// '1'ならスレッドモードでSVC
 	"	mrs		r1,psp					\n"	//   R1 = PSP;		// プロセススタックをコピー
 	"	b		.L0001					\n"
@@ -438,9 +477,12 @@ void SVC_Handler()
 	"	mrs		r1,msp					\n"	//   R1 = MSP;		// メインスタックをコピー
 	".L0001:							\n"	// }
 	"	ldr		r2,[r1,#24]				\n"	// R2 = R1->PC;
-	"	ldrh	r0,[r2,#-2]				\n"	// R0 = *(R2-2);	// SVC(SWI)命令の下位バイトが引数部分
-	"	movw	r2,#:lower16:svcop		\n"	// R2 = &svcop;
-	"	movt	r2,#:upper16:svcop		\n"
+//	"	ldrh	r0,[r2,#-2]				\n"	// R0 = *(R2-2);	// SVC(SWI)命令の下位バイトが引数部分
+	"	sub		r2,#2					\n"	// R0 = *(R2-2);	// SVC(SWI)命令の下位バイトが引数部分
+	"	ldrh	r0,[r2,#0]				\n"
+//	"	movw	r2,#:lower16:svcop		\n"	// R2 = &svcop;
+//	"	movt	r2,#:upper16:svcop		\n"
+	"	ldr		r2,svcopConst1			\n"	// R2 = &svcop;
 	"	str		r0,[r2,#0]				\n"	// svcop = R0;		// svcop変数にコピー
 //	"	push	{r7}					\n"	// PUSH R7			// C言語でフレームポインタにR7を使っているため
 //	"	sub		sp,sp,#8				\n"	// SP -= 8;			// (4バイト×2個分）：C言語側で２ワード分使っていたため
@@ -452,10 +494,10 @@ void SVC_Handler()
 			SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;	// PendSVを発生させてスケジューリング
 			break;
 		case 0x01:	// LEDOFF
-			GPIOB->BRR = GPIO_BRR_BR8_Msk;
+			GPIOC->BRR = GPIO_BRR_BR6_Msk;
 			break;
 		case 0x02:	// LEDON
-			GPIOB->BSRR = GPIO_BSRR_BS8_Msk;
+			GPIOC->BSRR = GPIO_BSRR_BS6_Msk;
 			break;
 		case 0x10:	// SLEEP
 			tcb[c_tasknum].slp_timer = svcparam[0];	// パラメータを積んで
@@ -474,11 +516,13 @@ void SVC_Handler()
 			break;
 		case 0x13:	// SEMAGET(data#)
 			__asm volatile (
-			"	movw	r2,#:lower16:svcparam	\n"	// R2 = &svcparam;
-			"	movt	r2,#:upper16:svcparam	\n"
+//			"	movw	r2,#:lower16:svcparam	\n"	// R2 = &svcparam;
+//			"	movt	r2,#:upper16:svcparam	\n"
+			"	ldr		r2,svcparamConst1		\n"	// R2 = &svcparam;
 			"	ldr		r0,[r2,#0]				\n"	// R0 = svcparam[0];(DATA#)
-			"	movw	r2,#:lower16:semadat	\n"	// R2 = &semadat;
-			"	movt	r2,#:upper16:semadat	\n"
+//			"	movw	r2,#:lower16:semadat	\n"	// R2 = &semadat;
+//			"	movt	r2,#:upper16:semadat	\n"
+			"	ldr		r2,semadatConst1		\n"	// R2 = &semadat;
 			"	add		r2,r0					\n"
 			"	mov		r0,#0					\n"
 			"	ldrb	r0,[r2,#0]				\n"	// R0 = semadat[DATA#];
@@ -495,46 +539,65 @@ void SVC_Handler()
 			break;
 		case 0x15:	// MSGBLKGET
 			__asm volatile (
-			"	movw	r3,#:lower16:q_msgblk	\n"	// R3 = &q_msgblk;
-			"	movt	r3,#:upper16:q_msgblk	\n"
+//			"	movw	r3,#:lower16:q_msgblk	\n"	// R3 = &q_msgblk;
+//			"	movt	r3,#:upper16:q_msgblk	\n"
+			"	ldr		r3,q_msgblkConst1		\n"	// R3 = &q_msgblk;
 			"	ldrb	r0,[r3,#0]				\n"	// R0 = q_msgblk;
 			"	cmp		r0,#0xff				\n"	// if (R0 != EOQ) {
 			"	beq		.L1500					\n"
-			"	movw	r2,#:lower16:msgblk		\n"	//   R2 = &msgblk;
-			"	movt	r2,#:upper16:msgblk		\n"
-			"	ldrb	r2,[r2,r0, lsl #3]		\n"	//   R2 = msgblk[R0].link;
+//			"	movw	r2,#:lower16:msgblk		\n"	//   R2 = &msgblk;
+//			"	movt	r2,#:upper16:msgblk		\n"
+			"	ldr		r2,msgblkConst1			\n"	//   R2 = &msgblk;
+//			"	ldrb	r2,[r2,r0, lsl #3]		\n"	//   R2 = msgblk[R0].link;
+			"	push	{r3}					\n"	//   // レジスタの空きがないのでR3をPUSH
+			"	lsl		r3,r0,#3				\n"	//   R2 = msgblk[R0].link;
+			"	ldrb	r2,[r2,r3]				\n"
+			"	pop		{r3}					\n"	//   // レジスタの空きがないのでR3をPOP
 			"	strb	r2,[r3,#0]				\n"	//   q_msgblk = R2;
-			"	movw	r2,#:lower16:msgblk		\n"	//   R2 = &msgblk;
-			"	movt	r2,#:upper16:msgblk		\n"
+//			"	movw	r2,#:lower16:msgblk		\n"	//   R2 = &msgblk;
+//			"	movt	r2,#:upper16:msgblk		\n"
+			"	ldr		r2,msgblkConst1			\n"	//   R2 = &msgblk;
 			"	mov		r3,#0xff				\n"
-			"	strb	r3,[r2,r0, lsl #3]		\n" //   msgblk[R0].link = 0xff;
+//			"	strb	r3,[r2,r0, lsl #3]		\n" //   msgblk[R0].link = 0xff;
+			"	push	{r1}					\n"	//   // レジスタの空きがないのでR1をPUSH
+			"	lsl		r1,r0,#3				\n" //   msgblk[R0].link = 0xff;
+			"	strb	r3,[r2,r1]				\n"
+			"	pop		{r1}					\n"	//   // レジスタの空きがないのでR1をPOP
 			".L1500:							\n"	// }
 			"	str		r0,[r1,#0]				\n"	// return(R0);
 			);
 			break;
 		case 0x16:	// MSGBLKFREE(data#)
 			__asm volatile (
-			"	movw	r2,#:lower16:svcparam	\n"	// R2 = &svcparam;
-			"	movt	r2,#:upper16:svcparam	\n"
+//			"	movw	r2,#:lower16:svcparam	\n"	// R2 = &svcparam;
+//			"	movt	r2,#:upper16:svcparam	\n"
+			"	ldr		r2,svcparamConst1		\n"	// R2 = &svcparam;
 			"	ldrb	r1,[r2,#0]				\n"	// R1 = svcparam[0];(DATA#)
-			"	movw	r2,#:lower16:msgblk		\n"	// R2 = &msgblk;
-			"	movt	r2,#:upper16:msgblk		\n"
-			"	movw	r3,#:lower16:q_msgblk	\n"	// R3 = &q_msgblk;
-			"	movt	r3,#:upper16:q_msgblk	\n"
+//			"	movw	r2,#:lower16:msgblk		\n"	// R2 = &msgblk;
+//			"	movt	r2,#:upper16:msgblk		\n"
+			"	ldr		r2,msgblkConst1			\n"	// R2 = &msgblk;
+//			"	movw	r3,#:lower16:q_msgblk	\n"	// R3 = &q_msgblk;
+//			"	movt	r3,#:upper16:q_msgblk	\n"
+			"	ldr		r3,q_msgblkConst1		\n"	// R3 = &q_msgblk;
 			"	ldrb	r0,[r3,#0]				\n"	// R0 = q_msgblk;
 			"	strb	r1,[r3,#0]				\n"	// q_msgblk = DATA#;
-			"	strb	r0,[r2,r1, lsl #3]		\n"	// msgblk[DATA#].link = R0;
+//			"	strb	r0,[r2,r1, lsl #3]		\n"	// msgblk[DATA#].link = R0;
+			"	lsl		r1,#3					\n"	// msgblk[DATA#].link = R0;
+			"	strb	r0,[r2,r1]				\n"
 			);
 			break;
 		case 0x17:	// MSGBLKSEND(task#, msgblk#)
 			__asm volatile (
-			"	movw	r3,#:lower16:svcparam	\n"	// R3 = &svcparam;
-			"	movt	r3,#:upper16:svcparam	\n"
+//			"	movw	r3,#:lower16:svcparam	\n"	// R3 = &svcparam;
+//			"	movt	r3,#:upper16:svcparam	\n"
+			"	ldr		r3,svcparamConst1		\n"	// R3 = &svcparam;
 			"	ldr		r0,[r3,#0]				\n"	// R0 = svcparam[0];(TASK#)
-			"	mov		r0,r0, lsl #4			\n"
+//			"	mov		r0,r0, lsl #4			\n"
+			"	lsl		r0,#4					\n"
 			"	ldr		r1,[r3,#4]				\n"	// R1 = svcparam[1];(MSGBLK#)
-			"	movw	r3,#:lower16:tcb		\n"	// R3 = &tcb;
-			"	movt	r3,#:upper16:tcb		\n"
+//			"	movw	r3,#:lower16:tcb		\n"	// R3 = &tcb;
+//			"	movt	r3,#:upper16:tcb		\n"
+			"	ldr		r3,tcbConst1			\n"	// R3 = &tcb;
 			"	add		r0,#2					\n"
 			"	ldrb	r2,[r3,r0]				\n"	// R2 = tcb[TASK#].msg_q;
 			"	cmp		r2,#0xff				\n"	// if (R2 == EOQ) {
@@ -542,39 +605,57 @@ void SVC_Handler()
 			"	strb	r1,[r3,r0]				\n"	//   tcb[TASK#].msg_q = MSGBLK#;
 			"	b		.L1703					\n"	// } else {
 			".L1700:							\n"
-			"	movw	r3,#:lower16:msgblk		\n"	//   R3 = &msgblk;
-			"	movt	r3,#:upper16:msgblk		\n"
+//			"	movw	r3,#:lower16:msgblk		\n"	//   R3 = &msgblk;
+//			"	movt	r3,#:upper16:msgblk		\n"
+			"	ldr		r3,msgblkConst1			\n"	//   R3 = &msgblk;
 			".L1701:							\n"	//   while(1) {
-			"	ldrb	r0,[r3,r2, lsl #3]		\n"	//     R0 = msgblk[R2].link
+//			"	ldrb	r0,[r3,r2, lsl #3]		\n"	//     R0 = msgblk[R2].link
+			"	push	{r1}					\n"	//     // レジスタの空きがないのでR1をPUSH
+			"	lsl		r1,r2,#3				\n"	//     R0 = msgblk[R2].link
+			"	ldrb	r0,[r3,r1]				\n"
+			"	pop		{r1}					\n"	//     // レジスタの空きがないのでR1をPOP
 			"	cmp		r0,#0xff				\n"	//     if (R0 == EOQ)
 			"	beq		.L1702					\n"	//       break;
 			"	mov		r2,r0					\n"	//     R2 = R0;
 			"	b		.L1701					\n"	//   }
 			".L1702:							\n"
-			"	strb	r1,[r3,r2, lsl #3]		\n"	//   msgblk[R2].link = MSGBLK#;
+//			"	strb	r1,[r3,r2, lsl #3]		\n"	//   msgblk[R2].link = MSGBLK#;
+			"	lsl		r2,#3					\n"	//   msgblk[R2].link = MSGBLK#;
+			"	strb	r1,[r3,r2]				\n"
 			".L1703:							\n"	// }
-			"	movw	r3,#:lower16:msgblk		\n"	// R3 = &msgblk;
-			"	movt	r3,#:upper16:msgblk		\n"
+//			"	movw	r3,#:lower16:msgblk		\n"	// R3 = &msgblk;
+//			"	movt	r3,#:upper16:msgblk		\n"
+			"	ldr		r3,msgblkConst1			\n"	// R3 = &msgblk;
 			"	mov		r0,#0xff				\n"
-			"	strb	r0,[r3,r1, lsl #3]		\n"	// msgblk[R1].link = EOQ;
+//			"	strb	r0,[r3,r1, lsl #3]		\n"	// msgblk[R1].link = EOQ;
+			"	lsl		r1,#3					\n"	// msgblk[R1].link = EOQ;
+			"	strb	r0,[r3,r1]				\n"
 			);
 			break;
 		case 0x18:	// MSGBLKRCV
 			__asm volatile (
-			"	movw	r2,#:lower16:c_tasknum	\n"	// R2 = &c_tasknum;
-			"	movt	r2,#:upper16:c_tasknum	\n"
+//			"	movw	r2,#:lower16:c_tasknum	\n"	// R2 = &c_tasknum;
+//			"	movt	r2,#:upper16:c_tasknum	\n"
+			"	ldr		r2,c_tasknumConst1		\n"	// R2 = &c_tasknum;
 			"	ldrb	r2,[r2,#0]				\n"	// R2 = c_tasknum;
-			"	mov		r2,r2, lsl #4			\n"
+//			"	mov		r2,r2, lsl #4			\n"
+			"	lsl		r2,#4					\n"
 			"	add		r2,#2					\n"
-			"	movw	r3,#:lower16:tcb		\n"	// R3 = &tcb;
-			"	movt	r3,#:upper16:tcb		\n"
+//			"	movw	r3,#:lower16:tcb		\n"	// R3 = &tcb;
+//			"	movt	r3,#:upper16:tcb		\n"
+			"	ldr		r3,tcbConst1			\n"	// R3 = &tcb;
 			"	add		r3,r2					\n"	// R3 = &(tcb[c_tasknum].msg_q);
 			"	ldrb	r0,[r3,#0]				\n"	// R0 = tcb[c_tasknum].msg_q;
 			"	cmp		r0,#0xff				\n"	// if (R0 != EOQ) {
 			"	beq		.L1800					\n"
-			"	movw	r2,#:lower16:msgblk		\n"	//   R2 = &msgblk;
-			"	movt	r2,#:upper16:msgblk		\n"
-			"	ldrb	r2,[r2,r0, lsl #3]		\n"	//   R2 = &msgblk[R0];
+//			"	movw	r2,#:lower16:msgblk		\n"	//   R2 = &msgblk;
+//			"	movt	r2,#:upper16:msgblk		\n"
+			"	ldr		r2,msgblkConst1			\n"	//   R2 = &msgblk;
+//			"	ldrb	r2,[r2,r0, lsl #3]		\n"	//   R2 = &msgblk[R0];
+			"	push	{r1}					\n"	//   // レジスタの空きがないのでR1をPUSH
+			"	lsl		r1,r0,#3				\n"	//   R2 = &msgblk[R0];
+			"	ldrb	r2,[r2,r1]				\n"
+			"	pop		{r1}					\n"	//   // レジスタの空きがないのでR1をPOP
 			"	strb	r2,[r3,#0]				\n"	//   tcb[c_tasknum].msg_q = msgblk[R0].link;
 			".L1800:							\n"	// }
 			"	str		r0,[r1,#0]				\n"	// return(R0);
@@ -582,8 +663,9 @@ void SVC_Handler()
 			break;
 		case 0x19:	// TASKIDGET
 			__asm volatile (
-			"	movw	r0,#:lower16:c_tasknum	\n"	// R0 = &c_tasknum;
-			"	movt	r0,#:upper16:c_tasknum	\n"
+//			"	movw	r0,#:lower16:c_tasknum	\n"	// R0 = &c_tasknum;
+//			"	movt	r0,#:upper16:c_tasknum	\n"
+			"	ldr		r0,c_tasknumConst1		\n"	// R0 = &c_tasknum;
 			"	ldrb	r0,[r0,#0]				\n"	// R0 = c_tasknum;
 			"	str		r0,[r1,#0]				\n"	// return(R0);
 			);
@@ -594,12 +676,15 @@ void SVC_Handler()
 			break;
 		case 0xff:	// CHG_UNPRIVILEGE
 			__asm volatile (
-			"	movw	r2,#:lower16:c_task		\n"	// R2 = &c_task;
-			"	movt	r2,#:upper16:c_task		\n"
+//			"	movw	r2,#:lower16:c_task		\n"	// R2 = &c_task;
+//			"	movt	r2,#:upper16:c_task		\n"
+			"	ldr		r2,c_taskConst2			\n"	// R2 = &c_task;
 			"	ldr		r0,[r2,#0]				\n"
 			"	ldrb	r2,[r0,#3]				\n"	// R2 = c_task->privilege;
 			"	mrs		r1,control				\n"
-			"	and		r1,#0xfffffffe			\n"
+//			"	and		r1,#0xfffffffe			\n"
+			"	ldr		r3,PRIVILEGE_MASK2		\n"
+			"	and		r1,r3					\n"
 			"	orr		r1,r2					\n"	// CONTROL &= 0xFFFFFFFE;
 			"	msr		control,r1				\n"	// CONTROL |= c_task->privilege;
 													// スレッドモードの特権レベルを変更
@@ -607,7 +692,11 @@ void SVC_Handler()
 			"	msr		psp,r2					\n"	// PSP = c_task->sp;
 													// SVCall例外からタスク#0に復帰した際、
 													// PSPがスタック開始位置になるよう調整済
-			"	orr		lr,lr,#4				\n"	// LR |= 0x04;
+//			"	orr		lr,lr,#4				\n"	// LR |= 0x04;
+			"	mov		r0,lr					\n"	// LR |= 0x04;
+			"	mov		r1,#4					\n"
+			"	orr		r0,r1					\n"
+			"	mov		lr,r0					\n"
 													// スレッドモードに移行
 													// 1001:msp使用(プロセス） 1101:psp使用（スレッド）
 													// なので、セットするとスレッドモードになる
@@ -622,6 +711,25 @@ void SVC_Handler()
 //	"	add		sp,sp,#8				\n"	// SP += 8
 //	"	pop		{r7}					\n"	// POP R7
 	"	bx		lr						\n"	// return;
+	"	.align	4						\n"
+	"svcparamConst1:					\n"
+	"	.word	svcparam				\n"
+	"svcopConst1:						\n"
+	"	.word	svcop					\n"
+	"semadatConst1:						\n"
+	"	.word	semadat					\n"
+	"q_msgblkConst1:					\n"
+	"	.word	q_msgblk				\n"
+	"msgblkConst1:						\n"
+	"	.word	msgblk					\n"
+	"tcbConst1:							\n"
+	"	.word	tcb						\n"
+	"c_tasknumConst1:					\n"
+	"	.word	c_tasknum				\n"
+	"c_taskConst2:						\n"
+	"	.word	c_task					\n"
+	"PRIVILEGE_MASK2:					\n"
+	"	.word	0xfffffffe				\n"
 	);
 }
 
@@ -880,11 +988,11 @@ void th_ledon()
 			default:
 				for (k=0; k<10; k++) {
 					SVC_LEDON();
-					for (i=0; i<3; i++)
+					for (i=0; i<2; i++)
 						for (j=0; j<0xfffe; j++)
 							;
 					SVC_LEDOFF();
-					for (i=0; i<3; i++)
+					for (i=0; i<2; i++)
 						for (j=0; j<0xfffe; j++)
 							;
 				}
@@ -985,16 +1093,16 @@ int main_rtos(void)
 	task_start = 0;
 	c_tasknum = 0;
 	c_task = &tcb[c_tasknum];
-//	GPIOB->MODER = (GPIOB->MODER & ~GPIO_MODER_MODE8_Msk) | GPIO_MODER_MODE8_0;
-//	GPIOB->BRR = GPIO_BRR_BR8_Msk;
+//	GPIOC->MODER = (GPIOC->MODER & ~GPIO_MODER_MODE6_Msk) | GPIO_MODER_MODE6_0;
+//	GPIOC->BRR = GPIO_BRR_BR6_Msk;
 
 	pendsv_count = 0;
 	systick_count = 100;
 //	SysTick_Config(SystemCoreClock/100);	// 1/100秒（=10ms）ごとにSysTick割り込み
 //	SysTick_Config(SystemCoreClock/10);		// 1/10秒（=100ms）ごとにSysTick割り込み
-	NVIC_SetPriority(SVCall_IRQn, 0x80);	// SVCの優先度は中ほど
-	NVIC_SetPriority(SysTick_IRQn, 0xc0);	// SysTickの優先度はSVCより低く
-	NVIC_SetPriority(PendSV_IRQn, 0xff);	// PendSVの優先度を最低にしておく
+	NVIC_SetPriority(SVCall_IRQn, 0x40);	// SVCの優先度は中ほど
+	NVIC_SetPriority(SysTick_IRQn, 0x80);	// SysTickの優先度はSVCより低く
+	NVIC_SetPriority(PendSV_IRQn, 0xc0);	// PendSVの優先度を最低にしておく
 	NVIC_EnableIRQ(SysTick_IRQn);
 
 	// Enter an infinite loop, just incrementing a counter

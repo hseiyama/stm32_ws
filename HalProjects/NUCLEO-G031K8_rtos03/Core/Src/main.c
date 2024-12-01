@@ -90,7 +90,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+	main_rtos();
   /* USER CODE END 2 */
 
   /* Infinite loop */
