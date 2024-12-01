@@ -549,20 +549,20 @@ void SVC_Handler()
 //			"	movt	r2,#:upper16:msgblk		\n"
 			"	ldr		r2,msgblkConst1			\n"	//   R2 = &msgblk;
 //			"	ldrb	r2,[r2,r0, lsl #3]		\n"	//   R2 = msgblk[R0].link;
-			"	push	{r3}					\n"	//   // レジスタの空きがないのでR3をPUSH
+			"	mov		r12,r3					\n"	//   // R3を退避
 			"	lsl		r3,r0,#3				\n"	//   R2 = msgblk[R0].link;
 			"	ldrb	r2,[r2,r3]				\n"
-			"	pop		{r3}					\n"	//   // レジスタの空きがないのでR3をPOP
+			"	mov		r3,r12					\n"	//   // R3を復帰
 			"	strb	r2,[r3,#0]				\n"	//   q_msgblk = R2;
 //			"	movw	r2,#:lower16:msgblk		\n"	//   R2 = &msgblk;
 //			"	movt	r2,#:upper16:msgblk		\n"
 			"	ldr		r2,msgblkConst1			\n"	//   R2 = &msgblk;
 			"	mov		r3,#0xff				\n"
 //			"	strb	r3,[r2,r0, lsl #3]		\n" //   msgblk[R0].link = 0xff;
-			"	push	{r1}					\n"	//   // レジスタの空きがないのでR1をPUSH
+			"	mov		r12,r1					\n"	//   // R1を退避
 			"	lsl		r1,r0,#3				\n" //   msgblk[R0].link = 0xff;
 			"	strb	r3,[r2,r1]				\n"
-			"	pop		{r1}					\n"	//   // レジスタの空きがないのでR1をPOP
+			"	mov		r1,r12					\n"	//   // R1を復帰
 			".L1500:							\n"	// }
 			"	str		r0,[r1,#0]				\n"	// return(R0);
 			);
@@ -610,10 +610,10 @@ void SVC_Handler()
 			"	ldr		r3,msgblkConst1			\n"	//   R3 = &msgblk;
 			".L1701:							\n"	//   while(1) {
 //			"	ldrb	r0,[r3,r2, lsl #3]		\n"	//     R0 = msgblk[R2].link
-			"	push	{r1}					\n"	//     // レジスタの空きがないのでR1をPUSH
+			"	mov		r12,r1					\n"	//     // R1を退避
 			"	lsl		r1,r2,#3				\n"	//     R0 = msgblk[R2].link
 			"	ldrb	r0,[r3,r1]				\n"
-			"	pop		{r1}					\n"	//     // レジスタの空きがないのでR1をPOP
+			"	mov		r1,r12					\n"	//     // R1を復帰
 			"	cmp		r0,#0xff				\n"	//     if (R0 == EOQ)
 			"	beq		.L1702					\n"	//       break;
 			"	mov		r2,r0					\n"	//     R2 = R0;
@@ -652,10 +652,10 @@ void SVC_Handler()
 //			"	movt	r2,#:upper16:msgblk		\n"
 			"	ldr		r2,msgblkConst1			\n"	//   R2 = &msgblk;
 //			"	ldrb	r2,[r2,r0, lsl #3]		\n"	//   R2 = &msgblk[R0];
-			"	push	{r1}					\n"	//   // レジスタの空きがないのでR1をPUSH
+			"	mov		r12,r1					\n"	//   // R1を退避
 			"	lsl		r1,r0,#3				\n"	//   R2 = &msgblk[R0];
 			"	ldrb	r2,[r2,r1]				\n"
-			"	pop		{r1}					\n"	//   // レジスタの空きがないのでR1をPOP
+			"	mov		r1,r12					\n"	//   // R1を復帰
 			"	strb	r2,[r3,#0]				\n"	//   tcb[c_tasknum].msg_q = msgblk[R0].link;
 			".L1800:							\n"	// }
 			"	str		r0,[r1,#0]				\n"	// return(R0);

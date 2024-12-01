@@ -824,6 +824,13 @@ void th_zero()
 	dbgdata[0] = SVC_TASKIDGET();
 	while(1) {
 		if (UartRead(&RcvData) == OK) {
+			if (RcvData == '-') {
+				// PendSVの割り込みを禁止する
+				__set_BASEPRI(0xf0);
+			} else if (RcvData == '+') {
+				// PendSVの割り込みを許可する
+				__set_BASEPRI(0x00);
+			}
 			UartWrite(RcvData);
 		}
 		SVC_NULL();
