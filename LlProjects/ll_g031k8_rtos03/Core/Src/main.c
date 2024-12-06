@@ -93,7 +93,8 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+	LL_SYSTICK_EnableIT();
+	main_rtos();
   /* USER CODE END 2 */
 
   /* Infinite loop */
