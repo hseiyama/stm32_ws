@@ -27,10 +27,24 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
+/* キュー制御情報 */
+typedef struct _QueueControl {
+	uint16_t u16_head;				/* 先頭データのインデックス				*/
+	uint16_t u16_tail;				/* 末尾データのインデックス				*/
+	uint16_t u16_count;				/* データの登録数						*/
+} QueueControl;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+/* OK/NG定義 */
+#define NG					(0)
+#define OK					(1)
+
+#define TX_QUEUE_SIZE		(64)			/* UART送信Queueサイズ			*/
+#define RX_QUEUE_SIZE		(64)			/* UART受信バッファサイズ		*/
 
 /* USER CODE END PD */
 
@@ -42,7 +56,10 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+volatile static uint8_t u8s_UartTxBuffer[TX_QUEUE_SIZE];	/* UART送信Queueデータ			*/
+volatile static uint8_t u8s_UartRxBuffer[RX_QUEUE_SIZE];	/* UART受信Queueデータ			*/
+volatile static QueueControl sts_UartTxQueue;				/* UART送信Queue情報			*/
+volatile static QueueControl sts_UartRxQueue;				/* UART受信Queue情報			*/
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -50,11 +67,139 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
-
+static uint8_t setUartTxQueue(const uint8_t u8_Data);		/* UART送信Queueに登録する				*/
+static uint8_t getUartTxQueue(uint8_t *pu8_Data);			/* UART送信Queueから取得する			*/
+static uint8_t setUartRxQueue(const uint8_t u8_Data);		/* UART受信Queueに登録する				*/
+static uint8_t getUartRxQueue(uint8_t *pu8_Data);			/* UART受信Queueから取得する			*/
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+/**
+  * @brief  SysTick割り込みコールバック関数
+  * @param  None
+  * @retval None
+  */
+void SysTick_Init_Callback(void)
+{
+	uint8_t u8_RxData;
+
+	/* UART受信Queueから取得する */
+	while (getUartRxQueue(&u8_RxData)) {
+		setUartTxQueue(u8_RxData);
+	}
+	/* UART送信Queueデータが存在し、かつUSART送信Enpty割り込みが無効な場合 */
+	if ((sts_UartTxQueue.u16_count > 0) && !LL_USART_IsEnabledIT_TXE_TXFNF(USART2)) {
+		/* Enable TXE interrupt */
+		LL_USART_EnableIT_TXE_TXFNF(USART2);
+	}
+}
+
+/**
+  * @brief  USART受信コールバック関数
+  * @param  None
+  * @retval None
+  */
+void USART_CharReception_Callback(void)
+{
+	uint8_t u8_RxData;
+
+	/* Read Received character. RXNE flag is cleared by reading of RDR register */
+	u8_RxData = LL_USART_ReceiveData8(USART2);
+	/* UART受信Queueに登録する */
+	setUartRxQueue(u8_RxData);
+}
+
+/**
+  * @brief  USART送信Enptyコールバック関数
+  * @param  None
+  * @retval None
+  */
+void USART_TXEmpty_Callback(void)
+{
+	uint8_t u8_TxData = 0;
+
+	/* UART送信Queueから取得する */
+	if (getUartTxQueue(&u8_TxData)) {
+		/* Fill TDR with a new char */
+		LL_USART_TransmitData8(USART2, u8_TxData);
+	}
+	else {
+		/* Disable TXE interrupt */
+		LL_USART_DisableIT_TXE_TXFNF(USART2);
+		/* Enable TC interrupt */
+		LL_USART_EnableIT_TC(USART2);
+	}
+}
+
+/**
+  * @brief  USART送信完了コールバック関数
+  * @param  None
+  * @retval None
+  */
+void USART_CharTransmitComplete_Callback(void)
+{
+	/* Disable TC interrupt */
+	LL_USART_DisableIT_TC(USART2);
+	/* LD2を反転出力する */
+	LL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+}
+
+/**
+  * @brief  Hex1Byte表示処理
+  * @param  u8_Data データ
+  * @retval None
+  */
+void uartEchoHex8(uint8_t u8_Data) {
+	const uint8_t HexTable[] = {
+		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+	};
+	setUartTxQueue(HexTable[(u8_Data >> 4) & 0x0F]);
+	setUartTxQueue(HexTable[u8_Data & 0x0F]);
+}
+
+/**
+  * @brief  Hex2Byte表示処理
+  * @param  u16_Data データ
+  * @retval None
+  */
+void uartEchoHex16(uint16_t u16_Data) {
+	uartEchoHex8((u16_Data >> 8) & 0xFF);
+	uartEchoHex8(u16_Data & 0xFF);
+}
+
+/**
+  * @brief  Hex4Byte表示処理
+  * @param  u32_Data データ
+  * @retval None
+  */
+void uartEchoHex32(uint32_t u32_Data) {
+	uartEchoHex16((u32_Data >> 16) & 0xFFFF);
+	uartEchoHex16(u32_Data & 0xFFFF);
+}
+
+/**
+  * @brief  文字列表示処理
+  * @param  pu8_Data データのポインタ
+  * @retval None
+  */
+void uartEchoStr(const char *ps8_Data) {
+	while (*ps8_Data != 0x00) {
+		setUartTxQueue(*ps8_Data);
+		ps8_Data++;
+	}
+}
+
+/**
+  * @brief  文字列表示処理(改行付き)
+  * @param  pu8_Data データのポインタ
+  * @retval None
+  */
+void uartEchoStrln(const char *ps8_Data) {
+	uartEchoStr(ps8_Data);
+	uartEchoStr("\r\n");
+}
 
 /* USER CODE END 0 */
 
@@ -83,7 +228,12 @@ int main(void)
   LL_PWR_DisableUCPDDeadBattery();
 
   /* USER CODE BEGIN Init */
-
+	sts_UartTxQueue.u16_head = 0;
+	sts_UartTxQueue.u16_tail = 0;
+	sts_UartTxQueue.u16_count = 0;
+	sts_UartRxQueue.u16_head = 0;
+	sts_UartRxQueue.u16_tail = 0;
+	sts_UartRxQueue.u16_count = 0;
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -97,17 +247,25 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+	LL_SYSTICK_EnableIT();
+	/* Enable RXNE and Error interrupts */
+	LL_USART_EnableIT_RXNE_RXFNE(USART2);
+	LL_USART_EnableIT_ERROR(USART2);
+	/* 開始メッセージ */
+	uartEchoStrln("Start ll_g431kb_uart01 !!");
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1) {
+		/* LD2を反転出力する */
+		LL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		/* 1秒ウェイト */
+		LL_mDelay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+	}
   /* USER CODE END 3 */
 }
 
@@ -199,6 +357,10 @@ static void MX_USART2_UART_Init(void)
   GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /* USART2 interrupt Init */
+  NVIC_SetPriority(USART2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(USART2_IRQn);
+
   /* USER CODE BEGIN USART2_Init 1 */
 
   /* USER CODE END USART2_Init 1 */
@@ -263,6 +425,99 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+/**
+  * @brief  UART送信Queueに登録する
+  * @param  u8_Data データ
+  * @retval OK/NG
+  */
+static uint8_t setUartTxQueue(const uint8_t u8_Data)
+{
+	uint8_t u8_RetCode = NG;
+
+	/* 上限を超えるQueueデータの登録は破棄する */
+	if (sts_UartTxQueue.u16_count < TX_QUEUE_SIZE) {
+		/* Disable Interrupts */
+		__disable_irq();
+		u8s_UartTxBuffer[sts_UartTxQueue.u16_head] = u8_Data;
+		sts_UartTxQueue.u16_head = (sts_UartTxQueue.u16_head + 1) % TX_QUEUE_SIZE;
+		sts_UartTxQueue.u16_count ++;
+		/* Enable Interrupts */
+		__enable_irq();
+		u8_RetCode = OK;
+	}
+	return u8_RetCode;
+}
+
+/**
+  * @brief  UART送信Queueから取得する
+  * @param  pu8_Data データのポインタ
+  * @retval OK/NG
+  */
+static uint8_t getUartTxQueue(uint8_t *pu8_Data)
+{
+	uint8_t u8_RetCode = NG;
+
+	/* 登録済のQueueデータが存在する場合 */
+	if (sts_UartTxQueue.u16_count > 0) {
+		/* Disable Interrupts */
+		__disable_irq();
+		*pu8_Data = u8s_UartTxBuffer[sts_UartTxQueue.u16_tail];
+		sts_UartTxQueue.u16_tail = (sts_UartTxQueue.u16_tail + 1) % TX_QUEUE_SIZE;
+		sts_UartTxQueue.u16_count --;
+		/* Enable Interrupts */
+		__enable_irq();
+		u8_RetCode = OK;
+	}
+	return u8_RetCode;
+}
+
+/**
+  * @brief  UART受信Queueに登録する
+  * @param  u8_Data データ
+  * @retval OK/NG
+  */
+static uint8_t setUartRxQueue(const uint8_t u8_Data)
+{
+	/* Disable Interrupts */
+	__disable_irq();
+	/* 上限を超えるQueueデータの登録は上書きする */
+	u8s_UartRxBuffer[sts_UartRxQueue.u16_head] = u8_Data;
+	sts_UartRxQueue.u16_head = (sts_UartRxQueue.u16_head + 1) % RX_QUEUE_SIZE;
+	sts_UartRxQueue.u16_count ++;
+	/* Queueデータの上書きが起きる場合 */
+	if (sts_UartRxQueue.u16_count > RX_QUEUE_SIZE) {
+		sts_UartRxQueue.u16_count = RX_QUEUE_SIZE;
+		sts_UartRxQueue.u16_tail = (sts_UartRxQueue.u16_tail + 1) % RX_QUEUE_SIZE;
+	}
+	/* Enable Interrupts */
+	__enable_irq();
+
+	return OK;
+}
+
+/**
+  * @brief  UART受信Queueから取得する
+  * @param  pu8_Data データのポインタ
+  * @retval OK/NG
+  */
+static uint8_t getUartRxQueue(uint8_t *pu8_Data)
+{
+	uint8_t u8_RetCode = NG;
+
+	/* 登録済のQueueデータが存在する場合 */
+	if (sts_UartRxQueue.u16_count > 0) {
+		/* Disable Interrupts */
+		__disable_irq();
+		*pu8_Data = u8s_UartRxBuffer[sts_UartRxQueue.u16_tail];
+		sts_UartRxQueue.u16_tail = (sts_UartRxQueue.u16_tail + 1) % RX_QUEUE_SIZE;
+		sts_UartRxQueue.u16_count --;
+		/* Enable Interrupts */
+		__enable_irq();
+		u8_RetCode = OK;
+	}
+	return u8_RetCode;
+}
 
 /* USER CODE END 4 */
 

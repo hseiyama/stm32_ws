@@ -67,7 +67,15 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+extern void SysTick_Init_Callback(void);					/* SysTick割り込みコールバック関数		*/
+extern void USART_CharReception_Callback(void);				/* USART受信コールバック関数			*/
+extern void USART_TXEmpty_Callback(void);					/* USART送信Enptyコールバック関数		*/
+extern void USART_CharTransmitComplete_Callback(void);		/* USART送信完了コールバック関数		*/
+extern void uartEchoHex8(uint8_t u8_Data);					/* Hex1Byte表示処理						*/
+extern void uartEchoHex16(uint16_t u16_Data);				/* Hex2Byte表示処理						*/
+extern void uartEchoHex32(uint32_t u32_Data);				/* Hex4Byte表示処理						*/
+extern void uartEchoStr(const char *ps8_Data);				/* 文字列表示処理						*/
+extern void uartEchoStrln(const char *ps8_Data);			/* 文字列表示処理(改行付き)				*/
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

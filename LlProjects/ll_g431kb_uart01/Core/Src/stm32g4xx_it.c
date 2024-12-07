@@ -183,7 +183,7 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-
+	SysTick_Init_Callback();
   /* USER CODE END SysTick_IRQn 0 */
 
   /* USER CODE BEGIN SysTick_IRQn 1 */
@@ -197,6 +197,40 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32g4xx.s).                    */
 /******************************************************************************/
+
+/**
+  * @brief This function handles USART2 global interrupt / USART2 wake-up interrupt through EXTI line 26.
+  */
+void USART2_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART2_IRQn 0 */
+	/* Check RXNE flag value in ISR register */
+	if (LL_USART_IsActiveFlag_RXNE_RXFNE(USART2) && LL_USART_IsEnabledIT_RXNE_RXFNE(USART2)) {
+		/* RXNE flag will be cleared by reading of RDR register (done in call) */
+		/* Call function in charge of handling Character reception */
+		USART_CharReception_Callback();
+	}
+	else if (LL_USART_IsActiveFlag_TXE_TXFNF(USART2) && LL_USART_IsEnabledIT_TXE_TXFNF(USART2)) {
+		/* TXE flag will be automatically cleared when writing new data in TDR register */
+		/* Call function in charge of handling empty DR => will lead to transmission of next character */
+		USART_TXEmpty_Callback();
+	}
+	else if (LL_USART_IsActiveFlag_TC(USART2) && LL_USART_IsEnabledIT_TC(USART2)) {
+		/* Clear TC flag */
+		LL_USART_ClearFlag_TC(USART2);
+		/* Call function in charge of handling end of transmission of sent character
+		and prepare next character transmission */
+		USART_CharTransmitComplete_Callback();
+	}
+	else {
+		/* Call Error function */
+		Error_Handler();
+	}
+  /* USER CODE END USART2_IRQn 0 */
+  /* USER CODE BEGIN USART2_IRQn 1 */
+
+  /* USER CODE END USART2_IRQn 1 */
+}
 
 /* USER CODE BEGIN 1 */
 
