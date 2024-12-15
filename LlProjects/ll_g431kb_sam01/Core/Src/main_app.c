@@ -29,6 +29,17 @@ static uint16_t u16_RcvDataSize;					/* UART受信データサイズ		*/
 /* Exported functions --------------------------------------------------------*/
 
 /**
+  * @brief  EXTI12立ち上がりコールバック関数
+  * @param  None
+  * @retval None
+  */
+void EXTI12_Rising_Callback(void)
+{
+	/* 文字を出力する */
+	uartEchoStr("Exti12");
+}
+
+/**
   * @brief  初期化関数
   * @param  None
   * @retval None

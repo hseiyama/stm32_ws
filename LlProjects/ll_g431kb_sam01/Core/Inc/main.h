@@ -96,6 +96,7 @@ extern void SYSTICK_PeriodElapsed_Callback(void);			/* SysTickタイマ経過コ
 extern void USART_CharReception_Callback(void);				/* USART受信コールバック関数			*/
 extern void USART_TXEmpty_Callback(void);					/* USART送信Enptyコールバック関数		*/
 extern void USART_CharTransmitComplete_Callback(void);		/* USART送信完了コールバック関数		*/
+extern void EXTI12_Rising_Callback(void);					/* EXTI12立ち上がりコールバック関数		*/
 
 /* main_app.c */
 extern void setup(void);									/* 初期化関数							*/
