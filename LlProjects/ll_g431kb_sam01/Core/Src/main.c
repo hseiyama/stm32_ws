@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "drv.h"
+#include "lib.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,7 +43,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+volatile static uint32_t u32s_CycleTimeCounter;		/* 周期時間カウンター			*/
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -55,6 +56,16 @@ static void MX_USART2_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+/**
+  * @brief  SysTickタイマ経過コールバック関数
+  * @param  None
+  * @retval None
+  */
+void SYSTICK_PeriodElapsed_Callback(void)
+{
+	u32s_CycleTimeCounter++;
+}
 
 /* USER CODE END 0 */
 
@@ -86,31 +97,54 @@ int main(void)
   LL_PWR_DisableUCPDDeadBattery();
 
   /* USER CODE BEGIN Init */
-
+	u32s_CycleTimeCounter = 0;
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+	/* タイマー初期化処理 */
+	taskTimerInit();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+	/* UARTドライバー初期化処理 */
+	taskUartDriverInit();
+	/* 初期化関数 */
+	setup();
 
+	/* SysTickタイマー開始(1msタイマー割り込み用) */
+	LL_SYSTICK_EnableIT();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (true) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+		/* 周期時間カウンターがシステムの周期時間[ms]に達した場合 */
+		if (u32s_CycleTimeCounter >= SYS_CYCLE_TIME) {
+			/* Disable Interrupts */
+			__disable_irq();
+			u32s_CycleTimeCounter = 0;
+			/* Enable Interrupts */
+			__enable_irq();
+
+			/* タイマー更新処理 */
+			taskTimerUpdate();
+			/* UARTドライバー入力処理 */
+			taskUartDriverInput();
+			/* 周期処理関数 */
+			loop();
+			/* UARTドライバー出力処理 */
+			taskUartDriverOutput();
+		}
+	}
   /* USER CODE END 3 */
 }
 
@@ -201,6 +235,10 @@ static void MX_USART2_UART_Init(void)
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* USART2 interrupt Init */
+  NVIC_SetPriority(USART2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(USART2_IRQn);
 
   /* USER CODE BEGIN USART2_Init 1 */
 

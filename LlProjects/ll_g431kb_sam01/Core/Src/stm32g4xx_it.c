@@ -183,7 +183,8 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-
+	/* SysTickタイマ経過コールバック関数 */
+	SYSTICK_PeriodElapsed_Callback();
   /* USER CODE END SysTick_IRQn 0 */
 
   /* USER CODE BEGIN SysTick_IRQn 1 */
@@ -197,6 +198,36 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32g4xx.s).                    */
 /******************************************************************************/
+
+/**
+  * @brief This function handles USART2 global interrupt / USART2 wake-up interrupt through EXTI line 26.
+  */
+void USART2_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART2_IRQn 0 */
+	if (LL_USART_IsActiveFlag_RXNE_RXFNE(USART2) && LL_USART_IsEnabledIT_RXNE_RXFNE(USART2)) {
+		/* USART受信コールバック関数 */
+		USART_CharReception_Callback();
+	}
+	else if (LL_USART_IsActiveFlag_TXE_TXFNF(USART2) && LL_USART_IsEnabledIT_TXE_TXFNF(USART2)) {
+		/* USART送信Enptyコールバック関数 */
+		USART_TXEmpty_Callback();
+	}
+	else if (LL_USART_IsActiveFlag_TC(USART2) && LL_USART_IsEnabledIT_TC(USART2)) {
+		/* Clear TC flag */
+		LL_USART_ClearFlag_TC(USART2);
+		/* USART送信Enptyコールバック関数 */
+		USART_CharTransmitComplete_Callback();
+	}
+	else {
+		/* Call Error function */
+		Error_Handler();
+	}
+  /* USER CODE END USART2_IRQn 0 */
+  /* USER CODE BEGIN USART2_IRQn 1 */
+
+  /* USER CODE END USART2_IRQn 1 */
+}
 
 /* USER CODE BEGIN 1 */
 
