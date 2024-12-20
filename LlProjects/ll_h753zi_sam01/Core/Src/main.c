@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "drv.h"
+#include "lib.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,7 +43,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+volatile static uint32_t u32s_CycleTimeCounter;		/* 周期時間カウンター			*/
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -55,6 +56,16 @@ static void MX_USART3_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+/**
+  * @brief  SysTickタイマ経過コールバック関数
+  * @param  None
+  * @retval None
+  */
+void SYSTICK_PeriodElapsed_Callback(void)
+{
+	u32s_CycleTimeCounter++;
+}
 
 /* USER CODE END 0 */
 
@@ -81,42 +92,53 @@ int main(void)
   NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
 
   /* USER CODE BEGIN Init */
-
+	u32s_CycleTimeCounter = 0;
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+	/* タイマー初期化処理 */
+	taskTimerInit();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+	/* UARTドライバー初期化処理 */
+	taskUartDriverInit();
+	/* 初期化関数 */
+	setup();
 
+	/* SysTickタイマー開始(1msタイマー割り込み用) */
+	LL_SYSTICK_EnableIT();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	while (1) {
-		/* LD2を反転出力する */
-		LL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
-		LL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-		LL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
-		/* UART3文字を送信する */
-		if ((LL_GPIO_ReadInputPort(B1_GPIO_Port) & B1_Pin) != 0) {
-			LL_USART_TransmitData8(USART3, 'U');
-		}
-		else {
-			LL_USART_TransmitData8(USART3, 'u');
-		}
-		/* 1秒ウェイト */
-		LL_mDelay(1000);
+	while (true) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+		/* 周期時間カウンターがシステムの周期時間[ms]に達した場合 */
+		if (u32s_CycleTimeCounter >= SYS_CYCLE_TIME) {
+			/* Disable Interrupts */
+			__disable_irq();
+			u32s_CycleTimeCounter = 0;
+			/* Enable Interrupts */
+			__enable_irq();
+
+			/* タイマー更新処理 */
+			taskTimerUpdate();
+			/* UARTドライバー入力処理 */
+			taskUartDriverInput();
+			/* 周期処理関数 */
+			loop();
+			/* UARTドライバー出力処理 */
+			taskUartDriverOutput();
+		}
 	}
   /* USER CODE END 3 */
 }
@@ -217,6 +239,10 @@ static void MX_USART3_UART_Init(void)
   GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
   LL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
+  /* USART3 interrupt Init */
+  NVIC_SetPriority(USART3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(USART3_IRQn);
+
   /* USER CODE BEGIN USART3_Init 1 */
 
   /* USER CODE END USART3_Init 1 */
@@ -257,6 +283,7 @@ static void MX_USART3_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  LL_EXTI_InitTypeDef EXTI_InitStruct = {0};
   LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
@@ -274,10 +301,22 @@ static void MX_GPIO_Init(void)
   LL_GPIO_ResetOutputPin(LD2_GPIO_Port, LD2_Pin);
 
   /**/
-  GPIO_InitStruct.Pin = B1_Pin;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  LL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+  LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTC, LL_SYSCFG_EXTI_LINE13);
+
+  /**/
+  EXTI_InitStruct.Line_0_31 = LL_EXTI_LINE_13;
+  EXTI_InitStruct.Line_32_63 = LL_EXTI_LINE_NONE;
+  EXTI_InitStruct.Line_64_95 = LL_EXTI_LINE_NONE;
+  EXTI_InitStruct.LineCommand = ENABLE;
+  EXTI_InitStruct.Mode = LL_EXTI_MODE_IT;
+  EXTI_InitStruct.Trigger = LL_EXTI_TRIGGER_RISING;
+  LL_EXTI_Init(&EXTI_InitStruct);
+
+  /**/
+  LL_GPIO_SetPinPull(B1_GPIO_Port, B1_Pin, LL_GPIO_PULL_NO);
+
+  /**/
+  LL_GPIO_SetPinMode(B1_GPIO_Port, B1_Pin, LL_GPIO_MODE_INPUT);
 
   /**/
   GPIO_InitStruct.Pin = LD1_Pin|LD3_Pin;
@@ -294,6 +333,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   LL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  NVIC_SetPriority(EXTI15_10_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
