@@ -98,17 +98,22 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+	LL_SYSTICK_EnableIT();
+	main_rtos();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+		LL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		if (LL_USART_IsActiveFlag_TXE_TXFNF(USART2)) {
+			LL_USART_TransmitData8(USART2, 'u');
+		}
+		LL_mDelay(500);
+	}
   /* USER CODE END 3 */
 }
 
