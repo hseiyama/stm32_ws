@@ -95,17 +95,24 @@ int main(void)
   MX_GPIO_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-
+	LL_SYSTICK_EnableIT();
+	main_rtos();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+		LL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+		LL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		LL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+		if (LL_USART_IsActiveFlag_TXE_TXFNF(USART3)) {
+			LL_USART_TransmitData8(USART3, 'u');
+		}
+		LL_mDelay(500);
+	}
   /* USER CODE END 3 */
 }
 

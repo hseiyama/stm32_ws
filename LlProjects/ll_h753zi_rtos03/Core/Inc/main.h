@@ -67,7 +67,7 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+extern int main_rtos(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -93,7 +93,8 @@ void Error_Handler(void);
 #endif
 
 /* USER CODE BEGIN Private defines */
-
+#define OK (1)
+#define NG (0)
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
