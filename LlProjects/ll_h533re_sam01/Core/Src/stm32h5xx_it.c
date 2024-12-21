@@ -183,7 +183,8 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-
+	/* SysTickタイマ経過コールバック関数 */
+	SYSTICK_PeriodElapsed_Callback();
   /* USER CODE END SysTick_IRQn 0 */
 
   /* USER CODE BEGIN SysTick_IRQn 1 */
@@ -197,6 +198,57 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32h5xx.s).                    */
 /******************************************************************************/
+
+/**
+  * @brief This function handles EXTI Line13 interrupt.
+  */
+void EXTI13_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI13_IRQn 0 */
+
+  /* USER CODE END EXTI13_IRQn 0 */
+  if (LL_EXTI_IsActiveRisingFlag_0_31(LL_EXTI_LINE_13) != RESET)
+  {
+    LL_EXTI_ClearRisingFlag_0_31(LL_EXTI_LINE_13);
+    /* USER CODE BEGIN LL_EXTI_LINE_13_RISING */
+		/* EXTI13立ち上がりコールバック関数 */
+		EXTI13_Rising_Callback();
+    /* USER CODE END LL_EXTI_LINE_13_RISING */
+  }
+  /* USER CODE BEGIN EXTI13_IRQn 1 */
+
+  /* USER CODE END EXTI13_IRQn 1 */
+}
+
+/**
+  * @brief This function handles USART2 global interrupt.
+  */
+void USART2_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART2_IRQn 0 */
+	if (LL_USART_IsActiveFlag_RXNE_RXFNE(USART2) && LL_USART_IsEnabledIT_RXNE_RXFNE(USART2)) {
+		/* USART受信コールバック関数 */
+		USART_CharReception_Callback();
+	}
+	else if (LL_USART_IsActiveFlag_TXE_TXFNF(USART2) && LL_USART_IsEnabledIT_TXE_TXFNF(USART2)) {
+		/* USART送信Enptyコールバック関数 */
+		USART_TXEmpty_Callback();
+	}
+	else if (LL_USART_IsActiveFlag_TC(USART2) && LL_USART_IsEnabledIT_TC(USART2)) {
+		/* Clear TC flag */
+		LL_USART_ClearFlag_TC(USART2);
+		/* USART送信Enptyコールバック関数 */
+		USART_CharTransmitComplete_Callback();
+	}
+	else {
+		/* Call Error function */
+		Error_Handler();
+	}
+  /* USER CODE END USART2_IRQn 0 */
+  /* USER CODE BEGIN USART2_IRQn 1 */
+
+  /* USER CODE END USART2_IRQn 1 */
+}
 
 /* USER CODE BEGIN 1 */
 
