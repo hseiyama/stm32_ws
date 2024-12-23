@@ -183,7 +183,8 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-
+	/* SysTickタイマ経過コールバック関数 */
+	SYSTICK_PeriodElapsed_Callback();
   /* USER CODE END SysTick_IRQn 0 */
 
   /* USER CODE BEGIN SysTick_IRQn 1 */

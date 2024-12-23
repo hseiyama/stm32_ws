@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "lib.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,16 +46,27 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+volatile static uint32_t u32s_CycleTimeCounter;		/* 周期時間カウンター			*/
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
+static void MX_GPIO_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+/**
+  * @brief  SysTickタイマ経過コールバック関数
+  * @param  None
+  * @retval None
+  */
+void SYSTICK_PeriodElapsed_Callback(void)
+{
+	u32s_CycleTimeCounter++;
+}
 
 /* USER CODE END 0 */
 
@@ -82,27 +93,78 @@ int main(void)
   NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
 
   /* USER CODE BEGIN Init */
-
+	u32s_CycleTimeCounter = 0;
   /* USER CODE END Init */
 
   /* USER CODE BEGIN SysInit */
-
+	/* タイマー初期化処理 */
+	taskTimerInit();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
+  MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
+	/* 初期化関数 */
+	setup();
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (true) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+		/* 周期時間カウンターがシステムの周期時間[ms]に達した場合 */
+		if (u32s_CycleTimeCounter >= SYS_CYCLE_TIME) {
+			/* Disable Interrupts */
+			__disable_irq();
+			u32s_CycleTimeCounter = 0;
+			/* Enable Interrupts */
+			__enable_irq();
+
+			/* タイマー更新処理 */
+			taskTimerUpdate();
+			/* 周期処理関数 */
+			loop();
+		}
+	}
   /* USER CODE END 3 */
+}
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
+
+  /* GPIO Ports Clock Enable */
+  LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOB);
+
+  /**/
+  LL_GPIO_ResetOutputPin(LD3_GPIO_Port, LD3_Pin);
+
+  /**/
+  GPIO_InitStruct.Pin = LD1_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  LL_GPIO_Init(LD1_GPIO_Port, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = LD3_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  LL_GPIO_Init(LD3_GPIO_Port, &GPIO_InitStruct);
+
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
