@@ -74,9 +74,7 @@ void loop(void)
 	/* 1秒判定時間が満了した場合 */
 	if (checkTimer(&sts_Timer1s, TIME_1S)) {
 		/* ユーザーLEDを反転出力する */
-		LL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
 		LL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-		LL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
 		/* 文字を出力する */
 		uartEchoStr(".");
 

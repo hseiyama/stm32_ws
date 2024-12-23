@@ -102,6 +102,11 @@ extern void loop(void);										/* 周期処理関数							*/
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define B1_Pin LL_GPIO_PIN_13
+#define B1_GPIO_Port GPIOC
+#define B1_EXTI_IRQn EXTI15_10_IRQn
+#define LD2_Pin LL_GPIO_PIN_1
+#define LD2_GPIO_Port GPIOE
 #ifndef NVIC_PRIORITYGROUP_0
 #define NVIC_PRIORITYGROUP_0         ((uint32_t)0x00000007) /*!< 0 bit  for pre-emption priority,
                                                                  4 bits for subpriority */
@@ -116,14 +121,7 @@ extern void loop(void);										/* 周期処理関数							*/
 #endif
 
 /* USER CODE BEGIN Private defines */
-#define B1_Pin LL_GPIO_PIN_13
-#define B1_GPIO_Port GPIOC
-#define LD1_Pin LL_GPIO_PIN_0
-#define LD1_GPIO_Port GPIOB
-#define LD3_Pin LL_GPIO_PIN_14
-#define LD3_GPIO_Port GPIOB
-#define LD2_Pin LL_GPIO_PIN_1
-#define LD2_GPIO_Port GPIOE
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

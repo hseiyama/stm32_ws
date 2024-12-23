@@ -183,7 +183,7 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-	/* SysTickタイマ経過コールバック関数 */
+	/* SysTick繧ｿ繧､繝樒ｵ碁℃繧ｳ繝ｼ繝ｫ繝舌ャ繧ｯ髢｢謨ｰ */
 	SYSTICK_PeriodElapsed_Callback();
   /* USER CODE END SysTick_IRQn 0 */
 
@@ -206,17 +206,17 @@ void USART3_IRQHandler(void)
 {
   /* USER CODE BEGIN USART3_IRQn 0 */
 	if (LL_USART_IsActiveFlag_RXNE_RXFNE(USART3) && LL_USART_IsEnabledIT_RXNE_RXFNE(USART3)) {
-		/* USART受信コールバック関数 */
+		/* USART蜿嶺ｿ｡繧ｳ繝ｼ繝ｫ繝舌ャ繧ｯ髢｢謨ｰ */
 		USART_CharReception_Callback();
 	}
 	else if (LL_USART_IsActiveFlag_TXE_TXFNF(USART3) && LL_USART_IsEnabledIT_TXE_TXFNF(USART3)) {
-		/* USART送信Enptyコールバック関数 */
+		/* USART騾∽ｿ｡Enpty繧ｳ繝ｼ繝ｫ繝舌ャ繧ｯ髢｢謨ｰ */
 		USART_TXEmpty_Callback();
 	}
 	else if (LL_USART_IsActiveFlag_TC(USART3) && LL_USART_IsEnabledIT_TC(USART3)) {
 		/* Clear TC flag */
 		LL_USART_ClearFlag_TC(USART3);
-		/* USART送信Enptyコールバック関数 */
+		/* USART騾∽ｿ｡Enpty繧ｳ繝ｼ繝ｫ繝舌ャ繧ｯ髢｢謨ｰ */
 		USART_CharTransmitComplete_Callback();
 	}
 	else {
@@ -227,6 +227,27 @@ void USART3_IRQHandler(void)
   /* USER CODE BEGIN USART3_IRQn 1 */
 
   /* USER CODE END USART3_IRQn 1 */
+}
+
+/**
+  * @brief This function handles EXTI line[15:10] interrupts.
+  */
+void EXTI15_10_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI15_10_IRQn 0 */
+
+  /* USER CODE END EXTI15_10_IRQn 0 */
+  if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_13) != RESET)
+  {
+    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_13);
+    /* USER CODE BEGIN LL_EXTI_LINE_13 */
+		/* EXTI13遶九■荳翫′繧翫さ繝ｼ繝ｫ繝舌ャ繧ｯ髢｢謨ｰ */
+		EXTI13_Rising_Callback();
+    /* USER CODE END LL_EXTI_LINE_13 */
+  }
+  /* USER CODE BEGIN EXTI15_10_IRQn 1 */
+
+  /* USER CODE END EXTI15_10_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
