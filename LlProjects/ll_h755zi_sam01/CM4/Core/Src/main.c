@@ -100,7 +100,7 @@ int main(void)
 	/* タイマー初期化処理 */
 	taskTimerInit();
 	/* SysTickタイマー設定(1msタイマー割り込み用) */
-	LL_Init1msTick(64000000);
+	LL_Init1msTick(200000000);
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
