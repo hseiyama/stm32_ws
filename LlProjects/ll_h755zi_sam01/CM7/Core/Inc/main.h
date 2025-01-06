@@ -93,7 +93,6 @@ extern void SYSTICK_PeriodElapsed_Callback(void);			/* SysTickタイマ経過コ
 extern void USART_CharReception_Callback(void);				/* USART受信コールバック関数			*/
 extern void USART_TXEmpty_Callback(void);					/* USART送信Enptyコールバック関数		*/
 extern void USART_CharTransmitComplete_Callback(void);		/* USART送信完了コールバック関数		*/
-extern void EXTI13_Rising_Callback(void);					/* EXTI13立ち上がりコールバック関数		*/
 
 /* main_app.c */
 extern void setup(void);									/* 初期化関数							*/
@@ -102,9 +101,6 @@ extern void loop(void);										/* 周期処理関数							*/
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define B1_Pin LL_GPIO_PIN_13
-#define B1_GPIO_Port GPIOC
-#define B1_EXTI_IRQn EXTI15_10_IRQn
 #define LD2_Pin LL_GPIO_PIN_1
 #define LD2_GPIO_Port GPIOE
 #ifndef NVIC_PRIORITYGROUP_0

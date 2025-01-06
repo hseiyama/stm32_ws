@@ -177,6 +177,14 @@ SECTIONS
     . = ALIGN(8);
   } >RAM_D1
 
+  .share :
+  {
+    . = ALIGN(4);
+    KEEP (*(.share))
+    KEEP (*(.share*))
+    . = ALIGN(4);
+  } >RAM_D3
+
   /* Remove information from the compiler libraries */
   /DISCARD/ :
   {

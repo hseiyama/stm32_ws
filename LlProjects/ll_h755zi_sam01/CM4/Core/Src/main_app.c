@@ -7,6 +7,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "drv.h"
 #include "lib.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -22,6 +23,17 @@ static Timer sts_Timer1s;							/* 1秒タイマー				*/
 /* Private function prototypes -----------------------------------------------*/
 
 /* Exported functions --------------------------------------------------------*/
+
+/**
+  * @brief  EXTI13立ち上がりコールバック関数
+  * @param  None
+  * @retval None
+  */
+void EXTI13_Rising_Callback(void)
+{
+	/* 文字を出力する */
+	syncEchoStr("Exti13");
+}
 
 /**
   * @brief  初期化関数

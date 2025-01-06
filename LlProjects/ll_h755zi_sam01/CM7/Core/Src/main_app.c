@@ -14,30 +14,18 @@
 
 /* Private define ------------------------------------------------------------*/
 #define TIME_1S				(1000)					/* 1秒判定時間[ms]			*/
-#define UART_BUFF_SIZE		(58)					/* UARTバッファサイズ		*/
+#define RCV_BUFF_SIZE		(58)					/* 受信バッファサイズ		*/
 
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
 static Timer sts_Timer1s;							/* 1秒タイマー				*/
-static uint8_t u8s_RcvData[UART_BUFF_SIZE];			/* UART受信データ			*/
-static uint16_t u16_RcvDataSize;					/* UART受信データサイズ		*/
-
+static uint8_t u8s_RcvData[RCV_BUFF_SIZE];			/* 受信データ				*/
+static uint16_t u16_RcvDataSize;					/* 受信データサイズ			*/
 
 /* Private function prototypes -----------------------------------------------*/
 
 /* Exported functions --------------------------------------------------------*/
-
-/**
-  * @brief  EXTI13立ち上がりコールバック関数
-  * @param  None
-  * @retval None
-  */
-void EXTI13_Rising_Callback(void)
-{
-	/* 文字を出力する */
-	uartEchoStr("Exti13");
-}
 
 /**
   * @brief  初期化関数
@@ -46,7 +34,7 @@ void EXTI13_Rising_Callback(void)
   */
 void setup(void)
 {
-	mem_set08(&u8s_RcvData[0], 0x00, UART_BUFF_SIZE);
+	mem_set08(&u8s_RcvData[0], 0x00, RCV_BUFF_SIZE);
 	u16_RcvDataSize = 0;
 
 	/* タイマーを開始する */
@@ -63,8 +51,16 @@ void setup(void)
   */
 void loop(void)
 {
+	/* SYNC受信データを取得する */
+	u16_RcvDataSize = syncGetRxData(&u8s_RcvData[0], RCV_BUFF_SIZE);
+	/* SYNC受信データが存在する場合 */
+	if (u16_RcvDataSize > 0) {
+		/* UART送信データを登録する */
+		uartSetTxData(&u8s_RcvData[0], u16_RcvDataSize);
+	}
+
 	/* UART受信データを取得する */
-	u16_RcvDataSize = uartGetRxData(&u8s_RcvData[0], UART_BUFF_SIZE);
+	u16_RcvDataSize = uartGetRxData(&u8s_RcvData[0], RCV_BUFF_SIZE);
 	/* UART受信データが存在する場合 */
 	if (u16_RcvDataSize > 0) {
 		/* UART送信データを登録する */

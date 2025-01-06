@@ -90,6 +90,7 @@ void Error_Handler(void);
 
 /* 割り込み用コールバック関数 */
 extern void SYSTICK_PeriodElapsed_Callback(void);			/* SysTickタイマ経過コールバック関数	*/
+extern void EXTI13_Rising_Callback(void);					/* EXTI13立ち上がりコールバック関数		*/
 
 /* main_app.c */
 extern void setup(void);									/* 初期化関数							*/
@@ -98,6 +99,8 @@ extern void loop(void);										/* 周期処理関数							*/
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define B1_Pin LL_GPIO_PIN_13
+#define B1_GPIO_Port GPIOC
 #define LD1_Pin LL_GPIO_PIN_0
 #define LD1_GPIO_Port GPIOB
 #define LD3_Pin LL_GPIO_PIN_14
