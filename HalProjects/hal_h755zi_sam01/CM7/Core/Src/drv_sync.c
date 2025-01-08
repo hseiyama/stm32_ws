@@ -101,7 +101,7 @@ uint8_t syncTakeSemaphore(uint32_t u32_SemId)
 {
 	uint8_t u8_RetCode = NG;
 
-	/* Fast Take a semaphore with 1 Step mode. */
+	/* Fast Take a semaphore with 1 Step mode */
 	if (HAL_HSEM_FastTake(u32_SemId) == HAL_OK) {
 		/*take success when MasterID match and take bit set*/
 		u8_RetCode = OK;
@@ -116,7 +116,7 @@ uint8_t syncTakeSemaphore(uint32_t u32_SemId)
   */
 uint8_t syncReleaseSemaphore(uint32_t u32_SemId)
 {
-	/* Release a semaphore. */
+	/* Release a semaphore */
 	HAL_HSEM_Release(u32_SemId, 0);
 	return OK;
 }
@@ -130,7 +130,7 @@ uint8_t syncIsTakenSemaphore(uint32_t u32_SemId)
 {
 	uint8_t u8_RetCode = OFF;
 
-	/* Check semaphore state Taken or not. */
+	/* Check semaphore state Taken or not */
 	if (HAL_HSEM_IsSemTaken(u32_SemId) != 0) {
 		u8_RetCode = ON;
 	}

@@ -25,14 +25,19 @@ static Timer sts_Timer1s;							/* 1秒タイマー				*/
 /* Exported functions --------------------------------------------------------*/
 
 /**
-  * @brief  EXTI13立ち上がりコールバック関数
+  * @brief  EXTI13イベント発生コールバック関数
   * @param  None
   * @retval None
   */
-void EXTI13_Rising_Callback(void)
+void EXTI13_EventOccurred_Callback(void)
 {
 	/* 文字を出力する */
 	syncEchoStr("Exti13");
+	/* ユーザーLEDを反転出力する */
+	LL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+
+	/* タイマーを再開する */
+	startTimer(&sts_Timer1s);
 }
 
 /**

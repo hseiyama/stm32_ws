@@ -90,7 +90,7 @@ void Error_Handler(void);
 
 /* 割り込み用コールバック関数 */
 extern void SYSTICK_PeriodElapsed_Callback(void);			/* SysTickタイマ経過コールバック関数	*/
-extern void EXTI13_Rising_Callback(void);					/* EXTI13立ち上がりコールバック関数		*/
+extern void EXTI13_EventOccurred_Callback(void);			/* EXTI13イベント発生コールバック関数	*/
 
 /* main_app.c */
 extern void setup(void);									/* 初期化関数							*/

@@ -34,6 +34,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	if (GPIO_Pin == B1_Pin) {
 		/* 文字を出力する */
 		syncEchoStr("Exti13");
+		/* ユーザーLEDを反転出力する */
+		HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+
+		/* タイマーを再開する */
+		startTimer(&sts_Timer1s);
 	}
 }
 

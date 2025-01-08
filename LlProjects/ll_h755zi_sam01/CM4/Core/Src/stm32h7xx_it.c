@@ -211,8 +211,8 @@ void EXTI15_10_IRQHandler(void)
   {
     LL_C2_EXTI_ClearFlag_0_31(LL_EXTI_LINE_13);
     /* USER CODE BEGIN LL_EXTI_LINE_13 */
-		/* EXTI13立ち上がりコールバック関数 */
-		EXTI13_Rising_Callback();
+		/* EXTI13イベント発生コールバック関数 */
+		EXTI13_EventOccurred_Callback();
     /* USER CODE END LL_EXTI_LINE_13 */
   }
   /* USER CODE BEGIN EXTI15_10_IRQn 1 */
