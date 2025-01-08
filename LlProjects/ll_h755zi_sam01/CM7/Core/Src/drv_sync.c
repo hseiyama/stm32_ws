@@ -103,7 +103,7 @@ uint8_t syncTakeSemaphore(uint32_t u32_SemId)
 
 	/* Read the RLR register to take the semaphore */
 	if (HSEM->RLR[u32_SemId] == (HSEM_CR_COREID_CURRENT | HSEM_RLR_LOCK)) {
-		/*take success when MasterID match and take bit set*/
+		/* take success when MasterID match and take bit set */
 		u8_RetCode = OK;
 	}
 	return u8_RetCode;
@@ -116,7 +116,7 @@ uint8_t syncTakeSemaphore(uint32_t u32_SemId)
   */
 uint8_t syncReleaseSemaphore(uint32_t u32_SemId)
 {
-	/* Clear the semaphore by writing to the R register : the MasterID and take bit = 0  */
+	/* Clear the semaphore by writing to the R register : the MasterID and take bit = 0 */
 	HSEM->R[u32_SemId] = HSEM_CR_COREID_CURRENT;
 	return OK;
 }

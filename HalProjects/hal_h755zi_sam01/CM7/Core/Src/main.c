@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "drv.h"
+#include "lib.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,7 +49,7 @@
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
-
+volatile static uint32_t u32s_CycleTimeCounter;		/* 周期時間カウンター			*/
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -62,6 +63,16 @@ static void MX_USART3_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+/**
+  * @brief  SysTickタイマ経過コールバック関数
+  * @param  None
+  * @retval None
+  */
+void SYSTICK_PeriodElapsed_Callback(void)
+{
+	u32s_CycleTimeCounter++;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -72,19 +83,11 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	uint8_t u8_TxData[] = "Tx,";
+
   /* USER CODE END 1 */
 /* USER CODE BEGIN Boot_Mode_Sequence_0 */
   int32_t timeout;
 /* USER CODE END Boot_Mode_Sequence_0 */
-
-  /* Enable the CPU Cache */
-
-  /* Enable I-Cache---------------------------------------------------------*/
-  SCB_EnableICache();
-
-  /* Enable D-Cache---------------------------------------------------------*/
-  SCB_EnableDCache();
 
 /* USER CODE BEGIN Boot_Mode_Sequence_1 */
   /* Wait until CPU2 boots and enters in stop mode or timeout*/
@@ -101,7 +104,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+	u32s_CycleTimeCounter = 0;
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -125,26 +128,50 @@ Error_Handler();
 /* USER CODE END Boot_Mode_Sequence_2 */
 
   /* USER CODE BEGIN SysInit */
-
+	/* タイマー初期化処理 */
+	taskTimerInit();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-
+	/* UARTドライバー初期化処理 */
+	taskUartDriverInit();
+	/* SYNCドライバー初期化処理 */
+	taskSyncDriverInit();
+	/* 初期化関数 */
+	setup();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (true) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-	HAL_UART_Transmit(&huart3, &u8_TxData[0], 3, 10);
-	HAL_Delay(1000);  }
+		/* 周期時間カウンターがシステムの周期時間[ms]に達した場合 */
+		if (u32s_CycleTimeCounter >= SYS_CYCLE_TIME) {
+			/* Disable Interrupts */
+			__disable_irq();
+			u32s_CycleTimeCounter = 0;
+			/* Enable Interrupts */
+			__enable_irq();
+
+			/* タイマー更新処理 */
+			taskTimerUpdate();
+			/* UARTドライバー入力処理 */
+			taskUartDriverInput();
+			/* SYNCドライバー入力処理 */
+			taskSyncDriverInput();
+			/* 周期処理関数 */
+			loop();
+			/* UARTドライバー出力処理 */
+			taskUartDriverOutput();
+			/* SYNCドライバー出力処理 */
+			taskSyncDriverOutput();
+		}
+	}
   /* USER CODE END 3 */
 }
 
@@ -276,12 +303,6 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : B1_Pin */
-  GPIO_InitStruct.Pin = B1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PC1 PC4 PC5 */
   GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_4|GPIO_PIN_5;

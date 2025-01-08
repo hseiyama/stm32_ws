@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "drv.h"
+#include "lib.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,7 +47,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+volatile static uint32_t u32s_CycleTimeCounter;		/* 周期時間カウンター			*/
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -57,6 +58,16 @@ static void MX_GPIO_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+/**
+  * @brief  SysTickタイマ経過コールバック関数
+  * @param  None
+  * @retval None
+  */
+void SYSTICK_PeriodElapsed_Callback(void)
+{
+	u32s_CycleTimeCounter++;
+}
 
 /* USER CODE END 0 */
 
@@ -92,30 +103,47 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+	u32s_CycleTimeCounter = 0;
   /* USER CODE END Init */
 
   /* USER CODE BEGIN SysInit */
-
+	/* タイマー初期化処理 */
+	taskTimerInit();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
-
+	/* SYNCドライバー初期化処理 */
+	taskSyncDriverInit();
+	/* 初期化関数 */
+	setup();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (true) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
-	HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
-	HAL_Delay(1000);
-  }
+		/* 周期時間カウンターがシステムの周期時間[ms]に達した場合 */
+		if (u32s_CycleTimeCounter >= SYS_CYCLE_TIME) {
+			/* Disable Interrupts */
+			__disable_irq();
+			u32s_CycleTimeCounter = 0;
+			/* Enable Interrupts */
+			__enable_irq();
+
+			/* タイマー更新処理 */
+			taskTimerUpdate();
+			/* SYNCドライバー入力処理 */
+			taskSyncDriverInput();
+			/* 周期処理関数 */
+			loop();
+			/* SYNCドライバー出力処理 */
+			taskSyncDriverOutput();
+		}
+	}
   /* USER CODE END 3 */
 }
 
@@ -131,10 +159,17 @@ static void MX_GPIO_Init(void)
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LD1_Pin|LD3_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : B1_Pin */
+  GPIO_InitStruct.Pin = B1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LD1_Pin LD3_Pin */
   GPIO_InitStruct.Pin = LD1_Pin|LD3_Pin;
@@ -142,6 +177,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
