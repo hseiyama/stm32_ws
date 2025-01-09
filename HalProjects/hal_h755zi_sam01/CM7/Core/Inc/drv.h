@@ -21,7 +21,7 @@ typedef struct _QueueControl {
 } QueueControl;
 
 /* Exported constants --------------------------------------------------------*/
-#define UART_RX_BLOCK_SIZE		(4)			/* UART受信ブロックサイズ		*/
+#define UART_RX_BLOCK_SIZE		(1)			/* UART受信ブロックサイズ		*/
 
 /* Exported macro ------------------------------------------------------------*/
 extern UART_HandleTypeDef huart3;

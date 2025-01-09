@@ -103,6 +103,9 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+	/* HSEMのクロックを有効化 */
+	LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_HSEM);
+
 	/* タイマー初期化処理 */
 	taskTimerInit();
   /* USER CODE END SysInit */

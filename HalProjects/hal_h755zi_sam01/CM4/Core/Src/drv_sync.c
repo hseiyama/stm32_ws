@@ -145,16 +145,8 @@ uint8_t syncIsTakenSemaphore(uint32_t u32_SemId)
   */
 uint16_t syncSetTxData(const uint8_t *pu8_Data, uint16_t u16_Size)
 {
-	uint16_t RetValue = 0;
-
-	/* セマフォを取得する */
-	while (syncTakeSemaphore(TX_HSEM_ID) != OK);
 	/* SYNC送信Queueに登録する */
-	RetValue = setSyncTxQueue(pu8_Data, u16_Size);
-	/* セマフォを開放する */
-	syncReleaseSemaphore(TX_HSEM_ID);
-
-	return RetValue;
+	return setSyncTxQueue(pu8_Data, u16_Size);
 }
 
 /**
@@ -165,16 +157,8 @@ uint16_t syncSetTxData(const uint8_t *pu8_Data, uint16_t u16_Size)
   */
 uint16_t syncGetRxData(uint8_t *pu8_Data, uint16_t u16_Size)
 {
-	uint16_t RetValue = 0;
-
-	/* セマフォを取得する */
-	while (syncTakeSemaphore(RX_HSEM_ID) != OK);
 	/* SYNC受信Queueから取得する */
-	RetValue = getSyncRxQueue(pu8_Data, u16_Size);
-	/* セマフォを開放する */
-	syncReleaseSemaphore(RX_HSEM_ID);
-
-	return RetValue;
+	return getSyncRxQueue(pu8_Data, u16_Size);
 }
 
 /**
@@ -258,6 +242,8 @@ static uint16_t setSyncTxQueue(const uint8_t *pu8_Data, uint16_t u16_Size)
 
 	/* 上限を超えるQueueデータの登録は破棄する */
 	if ((sts_SyncTxQueue.u16_count + u16_Size) <= TX_QUEUE_SIZE) {
+		/* セマフォを取得する */
+		while (syncTakeSemaphore(TX_HSEM_ID) != OK);
 		u16_RemainSize = TX_QUEUE_SIZE - sts_SyncTxQueue.u16_head;
 		/* バッファが循環する場合 */
 		if (u16_Size > u16_RemainSize) {
@@ -270,6 +256,8 @@ static uint16_t setSyncTxQueue(const uint8_t *pu8_Data, uint16_t u16_Size)
 		}
 		sts_SyncTxQueue.u16_head = (sts_SyncTxQueue.u16_head + u16_Size) % TX_QUEUE_SIZE;
 		sts_SyncTxQueue.u16_count += u16_Size;
+		/* セマフォを開放する */
+		syncReleaseSemaphore(TX_HSEM_ID);
 		u16_RetValue = u16_Size;
 	}
 	return u16_RetValue;
@@ -288,6 +276,8 @@ static uint16_t getSyncRxQueue(uint8_t *pu8_Data, uint16_t u16_Size)
 
 	/* 登録済のQueueデータが存在する場合 */
 	if (sts_SyncRxQueue.u16_count > 0) {
+		/* セマフォを取得する */
+		while (syncTakeSemaphore(RX_HSEM_ID) != OK);
 		u16_GetDataSize = (u16_Size <= sts_SyncRxQueue.u16_count) ? u16_Size : sts_SyncRxQueue.u16_count;
 		u16_RemainSize = RX_QUEUE_SIZE - sts_SyncRxQueue.u16_tail;
 		/* バッファが循環する場合 */
@@ -301,6 +291,8 @@ static uint16_t getSyncRxQueue(uint8_t *pu8_Data, uint16_t u16_Size)
 		}
 		sts_SyncRxQueue.u16_tail = (sts_SyncRxQueue.u16_tail + u16_GetDataSize) % RX_QUEUE_SIZE;
 		sts_SyncRxQueue.u16_count -= u16_GetDataSize;
+		/* セマフォを開放する */
+		syncReleaseSemaphore(RX_HSEM_ID);
 	}
 	return u16_GetDataSize;
 }
