@@ -177,12 +177,26 @@ SECTIONS
     . = ALIGN(8);
   } >RAM_D1
 
+  _sishare_init = LOADADDR(.share_init);
+
+  .share_init :
+  {
+    . = ALIGN(4);
+    _sshare_init = .;
+    KEEP (*(.share_init))
+    KEEP (*(.share_init*))
+    . = ALIGN(4);
+    _eshare_init = .;
+  } >RAM_D3 AT> FLASH
+
   .share :
   {
     . = ALIGN(4);
+    _sshare = .;
     KEEP (*(.share))
     KEEP (*(.share*))
     . = ALIGN(4);
+    _eshare = .;
   } >RAM_D3
 
   /* Remove information from the compiler libraries */

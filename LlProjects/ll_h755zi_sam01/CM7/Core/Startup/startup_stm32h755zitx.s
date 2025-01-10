@@ -79,6 +79,7 @@ LoopCopyDataInit:
   adds r4, r0, r3
   cmp r4, r1
   bcc CopyDataInit
+
 /* Zero fill the bss segment. */
   ldr r2, =_sbss
   ldr r4, =_ebss
@@ -93,8 +94,40 @@ LoopFillZerobss:
   cmp r2, r4
   bcc FillZerobss
 
+/**************************************/
+
+/* Copy the share_init segment initializers from flash to SRAM */
+  ldr r0, =_sshare_init
+  ldr r1, =_eshare_init
+  ldr r2, =_sishare_init
+  movs r3, #0
+  b LoopCopyShareInit
+CopyShareInit:
+  ldr r4, [r2, r3]
+  str r4, [r0, r3]
+  adds r3, r3, #4
+LoopCopyShareInit:
+  adds r4, r0, r3
+  cmp r4, r1
+  bcc CopyShareInit
+
+/* Zero fill the share segment. */
+  ldr r2, =_sshare
+  ldr r4, =_eshare
+  movs r3, #0
+  b LoopFillZeroShare
+FillZeroShare:
+  str  r3, [r2]
+  adds r2, r2, #4
+LoopFillZeroShare:
+  cmp r2, r4
+  bcc FillZeroShare
+
+/**************************************/
+
 /* Call static constructors */
     bl __libc_init_array
+
 /* Call the application's entry point.*/
   bl  main
   bx  lr

@@ -13,6 +13,7 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
+#define __SECTION_SYNCI		__attribute__((section(".share_init")))
 #define __SECTION_SYNC		__attribute__((section(".share")))
 
 #define HSEM_ID_30			(30)			/* HW semaphore 30				*/
@@ -32,7 +33,7 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-volatile static uint32_t u32s_SyncInitData __SECTION_SYNC = 0;			/* SYNC同期用データ(初期化時)	*/
+volatile static uint32_t u32s_SyncInitData __SECTION_SYNCI = 0;			/* SYNC同期用データ(初期化時)	*/
 
 #ifdef CORE_CM7
 volatile static uint8_t u8s_SyncTxBuffer[TX_QUEUE_SIZE] __SECTION_SYNC;	/* SYNC送信Queueデータ			*/
