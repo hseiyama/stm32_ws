@@ -14,12 +14,19 @@
 
 /* Private define ------------------------------------------------------------*/
 #define TIME_1S				(1000)					/* 1秒判定時間[ms]			*/
-#define RCV_BUFF_SIZE		(58)					/* 受信バッファサイズ		*/
+#define SND_BUFF_SIZE		(64)					/* 送信バッファサイズ		*/
+#define RCV_BUFF_SIZE		(64)					/* 受信バッファサイズ		*/
+
+/* SYNC命令 */
+#define CMD_LED_BRINK_A		(0x01)					/* 命令:LED点滅A			*/
+#define CMD_LED_BRINK_B		(0x02)					/* 命令:LED点滅B			*/
+#define CMD_LED_BRINK_C		(0x03)					/* 命令:LED点滅C			*/
 
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
 static Timer sts_Timer1s;							/* 1秒タイマー				*/
+static uint8_t u8s_SndData[SND_BUFF_SIZE];			/* 送信データ				*/
 static uint8_t u8s_RcvData[RCV_BUFF_SIZE];			/* 受信データ				*/
 static uint16_t u16_RcvDataSize;					/* 受信データサイズ			*/
 
@@ -34,6 +41,7 @@ static uint16_t u16_RcvDataSize;					/* 受信データサイズ			*/
   */
 void setup(void)
 {
+	mem_set08(&u8s_SndData[0], 0x00, SND_BUFF_SIZE);
 	mem_set08(&u8s_RcvData[0], 0x00, RCV_BUFF_SIZE);
 	u16_RcvDataSize = 0;
 
@@ -65,6 +73,41 @@ void loop(void)
 	if (u16_RcvDataSize > 0) {
 		/* UART送信データを登録する */
 		uartSetTxData(&u8s_RcvData[0], u16_RcvDataSize);
+		/* LED点滅の同期制御 */
+		switch (u8s_RcvData[0]) {
+		/* 全てのLEDを点灯 */
+		case 0x01: /* Ctrl + A */
+			/* SYNC送信データを登録する */
+			u8s_SndData[0] = CMD_LED_BRINK_A;
+			syncSetTxData(&u8s_SndData[0], 1);
+			/* ユーザーLEDを点灯する */
+			LL_GPIO_SetOutputPin(LD2_GPIO_Port, LD2_Pin);
+			/* タイマーを再開する */
+			startTimer(&sts_Timer1s);
+			break;
+		/* 各LEDを時間差で点灯 */
+		case 0x02: /* Ctrl + B */
+			/* SYNC送信データを登録する */
+			u8s_SndData[0] = CMD_LED_BRINK_B;
+			syncSetTxData(&u8s_SndData[0], 1);
+			/* ユーザーLEDを点灯する */
+			LL_GPIO_SetOutputPin(LD2_GPIO_Port, LD2_Pin);
+			/* タイマーを再開する */
+			startTimer(&sts_Timer1s);
+			break;
+		/* 各コアでLEDを反転 */
+		case 0x03: /* Ctrl + C */
+			/* SYNC送信データを登録する */
+			u8s_SndData[0] = CMD_LED_BRINK_C;
+			syncSetTxData(&u8s_SndData[0], 1);
+			/* ユーザーLEDを消灯する */
+			LL_GPIO_ResetOutputPin(LD2_GPIO_Port, LD2_Pin);
+			/* タイマーを再開する */
+			startTimer(&sts_Timer1s);
+			break;
+		default:
+			break;
+		}
 	}
 
 	/* 1秒判定時間が満了した場合 */
