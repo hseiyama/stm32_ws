@@ -18,9 +18,9 @@
 #define RCV_BUFF_SIZE		(64)					/* 受信バッファサイズ		*/
 
 /* SYNC命令 */
-#define CMD_LED_BRINK_A		(0x01)					/* 命令:LED点滅A			*/
-#define CMD_LED_BRINK_B		(0x02)					/* 命令:LED点滅B			*/
-#define CMD_LED_BRINK_C		(0x03)					/* 命令:LED点滅C			*/
+#define SYNC_LED_BRINK_A	(0x01)					/* LED点滅A(全Core点滅)		*/
+#define SYNC_LED_BRINK_B	(0x02)					/* LED点滅B(時間差点滅)		*/
+#define SYNC_LED_BRINK_C	(0x03)					/* LED点滅C(各Core反転)		*/
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -75,30 +75,30 @@ void loop(void)
 		uartSetTxData(&u8s_RcvData[0], u16_RcvDataSize);
 		/* LED点滅の同期制御 */
 		switch (u8s_RcvData[0]) {
-		/* 全てのLEDを点灯 */
+		/* LED点滅A(全Core点滅) */
 		case 0x01: /* Ctrl + A */
 			/* SYNC送信データを登録する */
-			u8s_SndData[0] = CMD_LED_BRINK_A;
+			u8s_SndData[0] = SYNC_LED_BRINK_A;
 			syncSetTxData(&u8s_SndData[0], 1);
 			/* ユーザーLEDを点灯する */
 			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, HIGH);
 			/* タイマーを再開する */
 			startTimer(&sts_Timer1s);
 			break;
-		/* 各LEDを時間差で点灯 */
+		/* LED点滅B(時間差点滅) */
 		case 0x02: /* Ctrl + B */
 			/* SYNC送信データを登録する */
-			u8s_SndData[0] = CMD_LED_BRINK_B;
+			u8s_SndData[0] = SYNC_LED_BRINK_B;
 			syncSetTxData(&u8s_SndData[0], 1);
 			/* ユーザーLEDを点灯する */
 			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, HIGH);
 			/* タイマーを再開する */
 			startTimer(&sts_Timer1s);
 			break;
-		/* 各コアでLEDを反転 */
+		/* LED点滅C(各Core反転) */
 		case 0x03: /* Ctrl + C */
 			/* SYNC送信データを登録する */
-			u8s_SndData[0] = CMD_LED_BRINK_C;
+			u8s_SndData[0] = SYNC_LED_BRINK_C;
 			syncSetTxData(&u8s_SndData[0], 1);
 			/* ユーザーLEDを消灯する */
 			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, LOW);

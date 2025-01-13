@@ -18,9 +18,9 @@
 #define RCV_BUFF_SIZE		(64)					/* 受信バッファサイズ		*/
 
 /* SYNC命令 */
-#define CMD_LED_BRINK_A		(0x01)					/* 命令:LED点滅A			*/
-#define CMD_LED_BRINK_B		(0x02)					/* 命令:LED点滅B			*/
-#define CMD_LED_BRINK_C		(0x03)					/* 命令:LED点滅C			*/
+#define SYNC_LED_BRINK_A	(0x01)					/* LED点滅A(全Core点滅)		*/
+#define SYNC_LED_BRINK_B	(0x02)					/* LED点滅B(時間差点滅)		*/
+#define SYNC_LED_BRINK_C	(0x03)					/* LED点滅C(各Core反転)		*/
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -76,8 +76,8 @@ void loop(void)
 	if (u16_RcvDataSize > 0) {
 		/* LED点滅の同期制御 */
 		switch (u8s_RcvData[0]) {
-		/* 全てのLEDを点灯 */
-		case CMD_LED_BRINK_A:
+		/* LED点滅A(全Core点滅) */
+		case SYNC_LED_BRINK_A:
 			/* ユーザーLEDを点灯する */
 			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, HIGH);
 			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, HIGH);
@@ -86,8 +86,8 @@ void loop(void)
 			/* タイマーを再開する */
 			startTimer(&sts_Timer1s);
 			break;
-		/* 各LEDを時間差で点灯 */
-		case CMD_LED_BRINK_B:
+		/* LED点滅B(時間差点滅) */
+		case SYNC_LED_BRINK_B:
 			/* ユーザーLEDを点灯/消灯する */
 			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, HIGH);
 			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, LOW);
@@ -98,8 +98,8 @@ void loop(void)
 			/* タイマーを開始する */
 			startTimer(&sts_Timer500ms);
 			break;
-		/* 各コアでLEDを反転 */
-		case CMD_LED_BRINK_C:
+		/* LED点滅C(各Core反転) */
+		case SYNC_LED_BRINK_C:
 			/* ユーザーLEDを点灯する */
 			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, HIGH);
 			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, HIGH);
