@@ -37,6 +37,8 @@
 #define HSEM_ID_0 (0U) /* HW semaphore 0*/
 #endif
 
+#define LL_MAX_DELAY (0xFFFFFFFFU)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -57,6 +59,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
+static void LL_mDelay(uint32_t Delay);
 
 /* USER CODE END PFP */
 
@@ -357,6 +360,31 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+/**
+  * @brief  This function provides accurate delay (in milliseconds) based
+  *         on SysTick counter flag
+  * @param  Delay specifies the delay time length, in milliseconds.
+  * @retval None
+  */
+static void LL_mDelay(uint32_t Delay)
+{
+	uint32_t count = Delay;
+	__IO uint32_t  tmp = SysTick->CTRL;  /* Clear the COUNTFLAG first */
+	/* Add this code to indicate that local variable is not used */
+	((void)tmp);
+
+	/* Add a period to guaranty minimum wait */
+	if (count < LL_MAX_DELAY) {
+		count++;
+	}
+
+	while (count != 0U) {
+		if((SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk) != 0U) {
+			count--;
+		}
+	}
+}
+
 /* USER CODE END 4 */
 
 /**
@@ -366,11 +394,14 @@ static void MX_GPIO_Init(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1) {
+		/* ユーザーLEDを反転出力する */
+		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		/* 100ms待つ */
+		LL_mDelay(100);
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 

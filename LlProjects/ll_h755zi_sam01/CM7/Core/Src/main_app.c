@@ -21,6 +21,7 @@
 #define SYNC_LED_BRINK_A	(0x01)					/* LED点滅A(全Core点滅)		*/
 #define SYNC_LED_BRINK_B	(0x02)					/* LED点滅B(時間差点滅)		*/
 #define SYNC_LED_BRINK_C	(0x03)					/* LED点滅C(各Core反転)		*/
+#define SYNC_CM4_RESET		(0x04)					/* リセット(CM4)			*/
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -50,6 +51,7 @@ void setup(void)
 
 	/* プログラム開始メッセージを表示する */
 	uartEchoStrln("Start UART/GPIO sample!!");
+	uartEchoStrln("Core-M7 start!!");
 }
 
 /**
@@ -104,6 +106,17 @@ void loop(void)
 			LL_GPIO_ResetOutputPin(LD2_GPIO_Port, LD2_Pin);
 			/* タイマーを再開する */
 			startTimer(&sts_Timer1s);
+			break;
+		/* リセット(CM4) */
+		case 0x04: /* Ctrl + D */
+			/* SYNC送信データを登録する */
+			u8s_SndData[0] = SYNC_CM4_RESET;
+			syncSetTxData(&u8s_SndData[0], 1);
+			break;
+		/* リセット(CM7) */
+		case 0x05: /* Ctrl + E */
+			/* リセット処理 */
+			NVIC_SystemReset();
 			break;
 		default:
 			break;

@@ -21,6 +21,7 @@
 #define SYNC_LED_BRINK_A	(0x01)					/* LED点滅A(全Core点滅)		*/
 #define SYNC_LED_BRINK_B	(0x02)					/* LED点滅B(時間差点滅)		*/
 #define SYNC_LED_BRINK_C	(0x03)					/* LED点滅C(各Core反転)		*/
+#define SYNC_CM4_RESET		(0x04)					/* リセット(CM4)			*/
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -59,6 +60,9 @@ void setup(void)
 	startTimer(&sts_Timer1s);
 	/* タイマーを停止する */
 	stopTimer(&sts_Timer500ms);
+
+	/* プログラム開始メッセージを表示する */
+	syncEchoStrln("Core-M4 start!!");
 }
 
 /**
@@ -105,6 +109,11 @@ void loop(void)
 			syncEchoStr("<SYNC_LedBrinkC>");
 			/* タイマーを再開する */
 			startTimer(&sts_Timer1s);
+			break;
+		/* リセット(CM4) */
+		case SYNC_CM4_RESET:
+			/* リセット処理 */
+			NVIC_SystemReset();
 			break;
 		default:
 			break;
