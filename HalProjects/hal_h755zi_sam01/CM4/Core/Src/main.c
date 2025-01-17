@@ -194,13 +194,13 @@ static void MX_GPIO_Init(void)
 /**
   * @brief  This function provides accurate delay (in milliseconds) based
   *         on SysTick counter flag
-  * @param  Delay specifies the delay time length, in milliseconds.
+  * @param  Delay: specifies the delay time length, in milliseconds.
   * @retval None
   */
 static void LL_mDelay(uint32_t Delay)
 {
 	uint32_t count = Delay;
-	__IO uint32_t  tmp = SysTick->CTRL;  /* Clear the COUNTFLAG first */
+	__IO uint32_t tmp = SysTick->CTRL; /* Clear the COUNTFLAG first */
 	/* Add this code to indicate that local variable is not used */
 	((void)tmp);
 
