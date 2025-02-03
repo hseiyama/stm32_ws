@@ -13,8 +13,8 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
-#define TX_QUEUE_SIZE		(64)			/* UART送信Queueサイズ			*/
-#define RX_QUEUE_SIZE		(64)			/* UART受信Queueサイズ			*/
+#define TX_QUEUE_SIZE		(128)			/* UART送信Queueサイズ			*/
+#define RX_QUEUE_SIZE		(128)			/* UART受信Queueサイズ			*/
 
 /* Private macro -------------------------------------------------------------*/
 

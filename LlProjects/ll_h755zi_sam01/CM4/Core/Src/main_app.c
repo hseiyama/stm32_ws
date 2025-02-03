@@ -22,6 +22,7 @@
 #define SYNC_LED_BRINK_B	(0x02)					/* LED点滅B(時間差点滅)		*/
 #define SYNC_LED_BRINK_C	(0x03)					/* LED点滅C(各Core反転)		*/
 #define SYNC_CM4_RESET		(0x04)					/* リセット(CM4)			*/
+#define SYNC_CM4_SLEEP		(0x05)					/* スリープ(CM4)			*/
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -114,6 +115,18 @@ void loop(void)
 		case SYNC_CM4_RESET:
 			/* リセット処理 */
 			NVIC_SystemReset();
+			break;
+		/* スリープ(CM4) */
+		case SYNC_CM4_SLEEP:
+			/* SysTickタイマー停止 */
+			LL_SYSTICK_DisableIT();
+			/* イベント待機 */
+			__WFE();
+			__WFE();
+			/* SysTickタイマー開始 */
+			LL_SYSTICK_EnableIT();
+			/* 文字を出力する */
+			syncEchoStr("<SYNC_WakeupCM4>");
 			break;
 		default:
 			break;

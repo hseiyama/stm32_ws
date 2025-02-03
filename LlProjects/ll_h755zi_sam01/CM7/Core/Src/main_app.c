@@ -22,6 +22,7 @@
 #define SYNC_LED_BRINK_B	(0x02)					/* LED点滅B(時間差点滅)		*/
 #define SYNC_LED_BRINK_C	(0x03)					/* LED点滅C(各Core反転)		*/
 #define SYNC_CM4_RESET		(0x04)					/* リセット(CM4)			*/
+#define SYNC_CM4_SLEEP		(0x05)					/* スリープ(CM4)			*/
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -117,6 +118,29 @@ void loop(void)
 		case 0x05: /* Ctrl + E */
 			/* リセット処理 */
 			NVIC_SystemReset();
+			break;
+		/* スリープ(CM4) */
+		case 0x06: /* Ctrl + F */
+			/* SYNC送信データを登録する */
+			u8s_SndData[0] = SYNC_CM4_SLEEP;
+			syncSetTxData(&u8s_SndData[0], 1);
+			break;
+		/* ウェイクアップ(CM4) */
+		case 0x07: /* Ctrl + G */
+			/* イベント送信 */
+			__SEV();
+			break;
+		case 0x08: /* Ctrl + H */
+			/* コマンド表示 */
+			uartEchoStrln("");
+			uartEchoStrln("^A BrinkA");
+			uartEchoStrln("^B BrinkB");
+			uartEchoStrln("^C BrinkC");
+			uartEchoStrln("^D Reset2");
+			uartEchoStrln("^E Reset1");
+			uartEchoStrln("^F Sleep2");
+			uartEchoStrln("^G Wakeup");
+			uartEchoStrln("^H Help");
 			break;
 		default:
 			break;
