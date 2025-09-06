@@ -51,10 +51,33 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
+/* boolean型 */
+typedef enum _bool {
+	false = 0,						/* false(偽)					*/
+	true = 1						/* true(真)						*/
+} bool;
+
+/* size_t型 */
+typedef long unsigned int size_t;
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+
+/* ON/OFF定義 */
+#define OFF					(0)
+#define ON					(1)
+
+/* OK/NG定義 */
+#define NG					(0)
+#define OK					(1)
+
+/* LOW/HIGH定義 */
+#define LOW					(0)
+#define HIGH				(1)
+
+#define SYS_CYCLE_TIME		(5)		/* システムの周期時間[ms]		*/
 
 /* USER CODE END EC */
 
@@ -67,6 +90,17 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+
+/* 割り込み用コールバック関数 */
+extern void SYSTICK_PeriodElapsed_Callback(void);			/* SysTickタイマ経過コールバック関数	*/
+extern void USART_CharReception_Callback(void);				/* USART受信コールバック関数			*/
+extern void USART_TXEmpty_Callback(void);					/* USART送信Enptyコールバック関数		*/
+extern void USART_CharTransmitComplete_Callback(void);		/* USART送信完了コールバック関数		*/
+extern void EXTI12_Rising_Callback(void);					/* EXTI12立ち上がりコールバック関数		*/
+
+/* main_app.c */
+extern void setup(void);									/* 初期化関数							*/
+extern void loop(void);										/* 周期処理関数							*/
 
 /* USER CODE END EFP */
 
