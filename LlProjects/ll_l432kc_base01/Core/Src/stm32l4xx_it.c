@@ -216,7 +216,7 @@ void USART2_IRQHandler(void)
 	else if (LL_USART_IsActiveFlag_TC(USART2) && LL_USART_IsEnabledIT_TC(USART2)) {
 		/* Clear TC flag */
 		LL_USART_ClearFlag_TC(USART2);
-		/* USART送信Enptyコールバック関数 */
+		/* USART送信完了コールバック関数 */
 		USART_CharTransmitComplete_Callback();
 	}
 	else {
