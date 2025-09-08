@@ -1,0 +1,6 @@
+■LSE を選択するための対処
+　Pinout & Configuration タブ
+　　(1) System Care -> RCC -> Low Speed Clock (LSE) を有効にする。
+　　(2) Timers -> RTC を有効にする。
+　Clock Configuration タブ
+　　(1) LSE=ON を選択する。
