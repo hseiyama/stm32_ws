@@ -317,11 +317,14 @@ static void MX_GPIO_Init(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (true) {
+		/* ユーザーLEDを反転出力する */
+		LL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+		/* 100ms待つ */
+		LL_mDelay(100);
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 
