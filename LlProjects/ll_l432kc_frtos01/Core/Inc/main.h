@@ -68,6 +68,10 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
+/* main_rtos.c */
+extern void setup(void);									/* 初期化関数							*/
+extern void loop(void);										/* 周期処理関数							*/
+
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
