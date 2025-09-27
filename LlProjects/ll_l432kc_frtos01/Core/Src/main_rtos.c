@@ -40,6 +40,23 @@ void vLedCtrlTask(void *pvParam)
 }
 
 /**
+  * @brief  UART制御タスク
+  * @param  pvParam: パラメータのポインタ
+  * @retval None
+  */
+void vUartCtrlTask(void *pvParam)
+{
+	/* タスク処理は無限ループ */
+	for (;;) {
+ 		/* UARTデータを送信する */
+		LL_USART_TransmitData8(USART2, '.');
+
+		/* 時間待ち(1000ms) 500tick */
+		vTaskDelay(1000);
+	}
+}
+
+/**
   * @brief  初期化関数
   * @param  None
   * @retval None
@@ -48,7 +65,9 @@ void setup(void)
 {
 	/* タスクを生成する */
 	xTaskCreate(vLedCtrlTask, "LedCtrl", configMINIMAL_STACK_SIZE,
-		(void *)NULL, tskIDLE_PRIORITY, NULL);
+		NULL, tskIDLE_PRIORITY, NULL);
+	xTaskCreate(vUartCtrlTask, "UartCtrl", configMINIMAL_STACK_SIZE,
+		NULL, tskIDLE_PRIORITY, NULL);
 
 	/* スケジュールを開始する */
 	vTaskStartScheduler();
