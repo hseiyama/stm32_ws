@@ -9,6 +9,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
+#include "timers.h"
 #include "main.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -18,9 +19,11 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-QueueHandle_t xQueue;
+QueueHandle_t xLedQueue;
+QueueHandle_t xUartQueue;
 
 /* Private function prototypes -----------------------------------------------*/
+static void prvAutoReloadTimerCallback(TimerHandle_t xTimer);
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -62,28 +65,20 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
   */
 void vLedCtrlTask(void *pvParameters)
 {
-	uint32_t ulValueToSend;
-	BaseType_t xStatus;
+	uint8_t ucValueToSend = 0;
 	TickType_t xLastWakeTime;
-
-	/* LED出力値を初期化する */
-	ulValueToSend = 0;
 
 	/* Tickカウントを取得する */
 	xLastWakeTime = xTaskGetTickCount();
 	/* タスク処理は無限ループ */
 	for (;;) {
+		/* LED出力値を反転する */
+		ucValueToSend = !ucValueToSend;
+		/* LED出力値をキューに送信する */
+		xQueueSendToBack(xLedQueue, &ucValueToSend, 0);
+
 		/* 時間待ち(500ms) 500tick */
 		vTaskDelayUntil(&xLastWakeTime, 500);
-
-		/* LED出力値を反転する */
-		ulValueToSend = !ulValueToSend;
-		/* LED出力値をキューに送信する */
-		xStatus = xQueueSendToBack(xQueue, &ulValueToSend, 0);
-		if (xStatus != pdPASS) {
-			/* 時間待ち(1000ms) 1000tick */
-			vTaskDelayUntil(&xLastWakeTime, 1000);
-		}
 	}
 }
 
@@ -94,16 +89,25 @@ void vLedCtrlTask(void *pvParameters)
   */
 void vUartCtrlTask(void *pvParameters)
 {
+	uint8_t ucValueToSend = '.';
 	TickType_t xLastWakeTime;
+	TimerHandle_t xAutoReloadTimer;
 
 	/* Tickカウントを取得する */
 	xLastWakeTime = xTaskGetTickCount();
+	/* 自動リロードタイマーを生成する */
+	xAutoReloadTimer = xTimerCreate("AutoReload", 2000, pdTRUE, 0,
+		prvAutoReloadTimerCallback);
+	if (xAutoReloadTimer != NULL) {
+		/* 自動リロードタイマーを開始する */
+		xTimerStart(xAutoReloadTimer, 0);
+	}
 	/* タスク処理は無限ループ */
 	for (;;) {
-		/* UARTデータを送信する */
-		LL_USART_TransmitData8(USART2, '.');
+		/* UART出力値をキューに送信する */
+		xQueueSendToBack(xUartQueue, &ucValueToSend, 0);
 
-		/* 時間待ち(1000ms) 500tick */
+		/* 時間待ち(1000ms) 1000tick */
 		vTaskDelayUntil(&xLastWakeTime, 1000);
 	}
 }
@@ -115,21 +119,45 @@ void vUartCtrlTask(void *pvParameters)
   */
 void vLedOutTask(void *pvParameters)
 {
-	uint32_t ulReceivedValue;
+	uint8_t ucReceivedValue;
 	BaseType_t xStatus;
 
 	/* タスク処理は無限ループ */
 	for (;;) {
 		/* LED出力値をキューから受信する */
-		xStatus = xQueueReceive(xQueue, &ulReceivedValue, 5000);
+		xStatus = xQueueReceive(xLedQueue, &ucReceivedValue, 5000);
 		if (xStatus == pdPASS) {
-			if (ulReceivedValue != 0) {
+			if (ucReceivedValue != 0) {
 				/* ユーザーLEDをON出力する */
 				LL_GPIO_SetOutputPin(LD3_GPIO_Port, LD3_Pin);
 			}
 			else {
 				/* ユーザーLEDをOFF出力する */
 				LL_GPIO_ResetOutputPin(LD3_GPIO_Port, LD3_Pin);
+			}
+		}
+	}
+}
+
+/**
+  * @brief  UART出力タスク
+  * @param  pvParameters: パラメータのポインタ
+  * @retval None
+  */
+void vUartOutTask(void *pvParameters)
+{
+	uint8_t ucReceivedValue;
+	BaseType_t xStatus;
+
+	/* タスク処理は無限ループ */
+	for (;;) {
+		/* LED出力値をキューから受信する */
+		xStatus = xQueueReceive(xUartQueue, &ucReceivedValue, 5000);
+		if (xStatus == pdPASS) {
+			/* UART送信レジスタが空の場合 */
+			if (LL_USART_IsActiveFlag_TXE(USART2) != 0) {
+				/* UARTデータを送信する */
+				LL_USART_TransmitData8(USART2, ucReceivedValue);
 			}
 		}
 	}
@@ -143,7 +171,8 @@ void vLedOutTask(void *pvParameters)
 void setup(void)
 {
 	/* キューを生成する */
-	xQueue = xQueueCreate(5, sizeof(uint32_t));
+	xLedQueue = xQueueCreate(5, sizeof(uint8_t));
+	xUartQueue = xQueueCreate(5, sizeof(uint8_t));
 
 	/* タスクを生成する */
 	xTaskCreate(vLedCtrlTask, "LedCtrl", configMINIMAL_STACK_SIZE,
@@ -151,6 +180,8 @@ void setup(void)
 	xTaskCreate(vUartCtrlTask, "UartCtrl", configMINIMAL_STACK_SIZE,
 		NULL, tskIDLE_PRIORITY + 1, NULL);
 	xTaskCreate(vLedOutTask, "LedOut", configMINIMAL_STACK_SIZE,
+		NULL, tskIDLE_PRIORITY + 2, NULL);
+	xTaskCreate(vUartOutTask, "UartOut", configMINIMAL_STACK_SIZE,
 		NULL, tskIDLE_PRIORITY + 2, NULL);
 
 	/* スケジュールを開始する */
@@ -167,4 +198,17 @@ void loop(void)
 }
 
 /* Private functions ---------------------------------------------------------*/
+
+/**
+  * @brief  自動リロードタイマーコールバック関数
+  * @param  xTimer: タイマーのハンドル
+  * @retval None
+  */
+static void prvAutoReloadTimerCallback(TimerHandle_t xTimer)
+{
+	uint8_t ucValueToSend = 't';
+
+	/* UART出力値をキューに送信する */
+	xQueueSendToBack(xUartQueue, &ucValueToSend, 0);
+}
 
