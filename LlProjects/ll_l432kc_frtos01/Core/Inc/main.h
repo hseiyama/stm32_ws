@@ -71,6 +71,7 @@ void Error_Handler(void);
 /* main_rtos.c */
 extern void setup(void);									/* 初期化関数							*/
 extern void loop(void);										/* 周期処理関数							*/
+extern void vExtiIrqHandler(void);							/* 外部入力割り込みハンドラー			*/
 
 /* USER CODE END EFP */
 

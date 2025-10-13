@@ -10,6 +10,7 @@
 #include "task.h"
 #include "queue.h"
 #include "timers.h"
+#include "semphr.h"
 #include "main.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -21,6 +22,7 @@
 /* Private variables ---------------------------------------------------------*/
 QueueHandle_t xLedQueue;
 QueueHandle_t xUartQueue;
+SemaphoreHandle_t xBinarySemaphore;
 
 /* Private function prototypes -----------------------------------------------*/
 static void prvAutoReloadTimerCallback(TimerHandle_t xTimer);
@@ -164,6 +166,42 @@ void vUartOutTask(void *pvParameters)
 }
 
 /**
+  * @brief  外部入力割り込みハンドラー
+  * @param  None
+  * @retval None
+  */
+void vExtiIrqHandler(void)
+{
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+	/* バイナリーセマフォを提供する */
+	xSemaphoreGiveFromISR(xBinarySemaphore, &xHigherPriorityTaskWoken);
+
+	/* コンテキストの切替えを要求する */
+	xHigherPriorityTaskWoken = pdTRUE;
+	portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
+/**
+  * @brief  外部入力ハンドラータスク
+  * @param  pvParameters: パラメータのポインタ
+  * @retval None
+  */
+void vExtiHandlerTask(void *pvParameters)
+{
+	uint8_t ucValueToSend = 'i';
+
+	/* タスク処理は無限ループ */
+	for (;;) {
+		/* バイナリーセマフォを取得する */
+		xSemaphoreTake(xBinarySemaphore, portMAX_DELAY);
+
+		/* UART出力値をキューに送信する */
+		xQueueSendToBack(xUartQueue, &ucValueToSend, 0);
+	}
+}
+
+/**
   * @brief  初期化関数
   * @param  None
   * @retval None
@@ -173,6 +211,8 @@ void setup(void)
 	/* キューを生成する */
 	xLedQueue = xQueueCreate(5, sizeof(uint8_t));
 	xUartQueue = xQueueCreate(5, sizeof(uint8_t));
+	/* バイナリーセマフォを生成する */
+	xBinarySemaphore = xSemaphoreCreateBinary();
 
 	/* タスクを生成する */
 	xTaskCreate(vLedCtrlTask, "LedCtrl", configMINIMAL_STACK_SIZE,
@@ -183,6 +223,8 @@ void setup(void)
 		NULL, tskIDLE_PRIORITY + 2, NULL);
 	xTaskCreate(vUartOutTask, "UartOut", configMINIMAL_STACK_SIZE,
 		NULL, tskIDLE_PRIORITY + 2, NULL);
+	xTaskCreate(vExtiHandlerTask, "ExtiHandler", configMINIMAL_STACK_SIZE,
+		NULL, tskIDLE_PRIORITY + 4, NULL);
 
 	/* スケジュールを開始する */
 	vTaskStartScheduler();
