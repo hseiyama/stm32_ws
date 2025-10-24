@@ -11,6 +11,7 @@
 #include "queue.h"
 #include "timers.h"
 #include "semphr.h"
+#include "event_groups.h"
 #include "main.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -23,6 +24,9 @@
 QueueHandle_t xLedQueue;
 QueueHandle_t xUartQueue;
 SemaphoreHandle_t xBinarySemaphore;
+EventGroupHandle_t xEventGroup;
+
+volatile uint8_t cUartRxData = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 static void prvAutoReloadTimerCallback(TimerHandle_t xTimer);
@@ -177,8 +181,7 @@ void vExtiIrqHandler(void)
 	/* バイナリーセマフォを提供する */
 	xSemaphoreGiveFromISR(xBinarySemaphore, &xHigherPriorityTaskWoken);
 
-	/* コンテキストの切替えを要求する */
-	xHigherPriorityTaskWoken = pdTRUE;
+	/* コンテキストの切替えを要求しない */
 	portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
@@ -202,17 +205,63 @@ void vExtiHandlerTask(void *pvParameters)
 }
 
 /**
+  * @brief  UART受信割り込みハンドラー
+  * @param  None
+  * @retval None
+  */
+void vUartRecvIrqHandler(void)
+{
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+	/* UART受信データを取得する */
+	cUartRxData = LL_USART_ReceiveData8(USART2);
+
+	/* イベントグループの対象ビットをセットする */
+	xEventGroupSetBitsFromISR(xEventGroup, 0x00000001, &xHigherPriorityTaskWoken);
+
+	/* コンテキストの切替えを要求しない */
+	portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
+/**
+  * @brief  UART受信ハンドラータスク
+  * @param  pvParameters: パラメータのポインタ
+  * @retval None
+  */
+void vUartRecvHandlerTask(void *pvParameters)
+{
+	EventBits_t xEventGroupValue;
+
+	/* タスク処理は無限ループ */
+	for (;;) {
+		/* イベントグループの対象ビットを待つ */
+		xEventGroupValue = xEventGroupWaitBits(xEventGroup, 0x00000001,
+			pdTRUE, pdFALSE, portMAX_DELAY);
+
+		if (xEventGroupValue == 0x00000001) {
+			/* UART出力値をキューに送信する */
+			xQueueSendToBack(xUartQueue, (const void *)&cUartRxData, 0);
+		}
+	}
+}
+
+/**
   * @brief  初期化関数
   * @param  None
   * @retval None
   */
 void setup(void)
 {
+	/* UART受信割り込みを許可 */
+	LL_USART_EnableIT_RXNE(USART2);
+
 	/* キューを生成する */
 	xLedQueue = xQueueCreate(5, sizeof(uint8_t));
 	xUartQueue = xQueueCreate(5, sizeof(uint8_t));
 	/* バイナリーセマフォを生成する */
 	xBinarySemaphore = xSemaphoreCreateBinary();
+	/* イベントグループを生成する */
+	xEventGroup = xEventGroupCreate();
 
 	/* タスクを生成する */
 	xTaskCreate(vLedCtrlTask, "LedCtrl", configMINIMAL_STACK_SIZE,
@@ -224,6 +273,8 @@ void setup(void)
 	xTaskCreate(vUartOutTask, "UartOut", configMINIMAL_STACK_SIZE,
 		NULL, tskIDLE_PRIORITY + 2, NULL);
 	xTaskCreate(vExtiHandlerTask, "ExtiHandler", configMINIMAL_STACK_SIZE,
+		NULL, tskIDLE_PRIORITY + 4, NULL);
+	xTaskCreate(vUartRecvHandlerTask, "UartRecvHandler", configMINIMAL_STACK_SIZE,
 		NULL, tskIDLE_PRIORITY + 4, NULL);
 
 	/* スケジュールを開始する */
