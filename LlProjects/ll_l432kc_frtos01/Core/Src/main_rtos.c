@@ -25,8 +25,10 @@ QueueHandle_t xLedQueue;
 QueueHandle_t xUartQueue;
 SemaphoreHandle_t xBinarySemaphore;
 EventGroupHandle_t xEventGroup;
+TaskHandle_t xHandlerTask;
 
-volatile uint8_t cUartRxData = 0;
+volatile uint8_t ucUartRxData = 0;
+volatile uint8_t ucLedReqData = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 static void prvAutoReloadTimerCallback(TimerHandle_t xTimer);
@@ -214,10 +216,16 @@ void vUartRecvIrqHandler(void)
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
 	/* UART受信データを取得する */
-	cUartRxData = LL_USART_ReceiveData8(USART2);
+	ucUartRxData = LL_USART_ReceiveData8(USART2);
 
 	/* イベントグループの対象ビットをセットする */
 	xEventGroupSetBitsFromISR(xEventGroup, 0x00000001, &xHigherPriorityTaskWoken);
+
+	/* UART受信データを判別し、タスク通知を送信する */
+	if ((ucUartRxData == '0') || (ucUartRxData == '1')) {
+		ucLedReqData = ucUartRxData - '0';
+		vTaskNotifyGiveFromISR(xHandlerTask, &xHigherPriorityTaskWoken);
+	}
 
 	/* コンテキストの切替えを要求しない */
 	portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -240,7 +248,27 @@ void vUartRecvHandlerTask(void *pvParameters)
 
 		if (xEventGroupValue == 0x00000001) {
 			/* UART出力値をキューに送信する */
-			xQueueSendToBack(xUartQueue, (const void *)&cUartRxData, 0);
+			xQueueSendToBack(xUartQueue, (const void *)&ucUartRxData, 0);
+		}
+	}
+}
+
+/**
+  * @brief  UART->LED変換タスク
+  * @param  pvParameters: パラメータのポインタ
+  * @retval None
+  */
+void vUartConvLedTask(void *pvParameters)
+{
+	uint32_t ulEventsToProcess;
+
+	/* タスク処理は無限ループ */
+	for (;;) {
+		/* タスク通知の受信を待つ */
+		ulEventsToProcess = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+		if(ulEventsToProcess != 0) {
+			/* LED出力値をキューに送信する */
+			xQueueSendToBack(xLedQueue, (const void *)&ucLedReqData, 0);
 		}
 	}
 }
@@ -252,7 +280,7 @@ void vUartRecvHandlerTask(void *pvParameters)
   */
 void setup(void)
 {
-	/* UART受信割り込みを許可 */
+	/* UART受信割り込みを有効化 */
 	LL_USART_EnableIT_RXNE(USART2);
 
 	/* キューを生成する */
@@ -276,6 +304,8 @@ void setup(void)
 		NULL, tskIDLE_PRIORITY + 4, NULL);
 	xTaskCreate(vUartRecvHandlerTask, "UartRecvHandler", configMINIMAL_STACK_SIZE,
 		NULL, tskIDLE_PRIORITY + 4, NULL);
+	xTaskCreate(vUartConvLedTask, "vUartConvLed", configMINIMAL_STACK_SIZE,
+		NULL, tskIDLE_PRIORITY + 3, &xHandlerTask);
 
 	/* スケジュールを開始する */
 	vTaskStartScheduler();
