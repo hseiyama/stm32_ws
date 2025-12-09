@@ -245,7 +245,6 @@ void vUartRecvHandlerTask(void *pvParameters)
 		/* イベントグループの対象ビットを待つ */
 		xEventGroupValue = xEventGroupWaitBits(xEventGroup, 0x00000001,
 			pdTRUE, pdFALSE, portMAX_DELAY);
-
 		if (xEventGroupValue == 0x00000001) {
 			/* UART出力値をキューに送信する */
 			xQueueSendToBack(xUartQueue, (const void *)&ucUartRxData, 0);
