@@ -101,8 +101,7 @@ extern void USART_CharTransmitComplete_Callback(void);		/* USART送信完了コ�
 extern void EXTI12_Rising_Callback(void);					/* EXTI12立ち上がりコールバック関数		*/
 
 /* main_rtos.c */
-extern void setup_rtos(void);								/* 初期化関数(RTOS)						*/
-extern void loop_rtos(void);								/* 周期処理関数(RTOS)					*/
+extern void vRtosSetup(void);								/* 初期化関数(RTOS)						*/
 extern void vExtiIrqHandler(void);							/* 外部入力割り込みハンドラー			*/
 extern void vUartRecvIrqHandler(void);						/* UART受信割り込みハンドラー			*/
 

@@ -99,7 +99,7 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 	/* 初期化関数(RTOS) */
-	setup_rtos();
+	vRtosSetup();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -108,8 +108,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		/* 周期処理関数(RTOS) */
-		loop_rtos();
 	}
   /* USER CODE END 3 */
 }

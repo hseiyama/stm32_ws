@@ -19,11 +19,11 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-static TaskHandle_t xHandlerTask;						/* タスク通のハンドル	*/
+static TaskHandle_t xHandlerTask;						/* タスク通知用のハンドル	*/
 
 /* Private function prototypes -----------------------------------------------*/
-static void vHighCycleTask(void *pvParameters);			/* High周期タスク		*/
-static void vMiddleCycleTask(void *pvParameters);		/* Middle周期タスク		*/
+static void prvHighCycleTask(void *pvParameters);		/* High周期タスク			*/
+static void prvMiddleCycleTask(void *pvParameters);		/* Middle周期タスク			*/
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -55,7 +55,7 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
   * @param  None
   * @retval None
   */
-void setup_rtos(void)
+void vRtosSetup(void)
 {
 	/* タイマー初期化処理 */
 	taskTimerInit();
@@ -68,22 +68,13 @@ void setup_rtos(void)
 	LL_SYSTICK_EnableIT();
 
 	/* タスクを生成する */
-	xTaskCreate(vHighCycleTask, "HighCycle", configMINIMAL_STACK_SIZE,
+	xTaskCreate(prvHighCycleTask, "HighCycle", configMINIMAL_STACK_SIZE,
 		NULL, tskIDLE_PRIORITY + 2, NULL);
-	xTaskCreate(vMiddleCycleTask, "MiddleCycle", configMINIMAL_STACK_SIZE,
+	xTaskCreate(prvMiddleCycleTask, "MiddleCycle", configMINIMAL_STACK_SIZE,
 		NULL, tskIDLE_PRIORITY + 1, &xHandlerTask);
 
 	/* スケジュールを開始する */
 	vTaskStartScheduler();
-}
-
-/**
-  * @brief  周期処理関数(RTOS)
-  * @param  None
-  * @retval None
-  */
-void loop_rtos(void)
-{
 }
 
 /* Private functions ---------------------------------------------------------*/
@@ -93,7 +84,7 @@ void loop_rtos(void)
   * @param  pvParameters: パラメータのポインタ
   * @retval None
   */
-static void vHighCycleTask(void *pvParameters)
+static void prvHighCycleTask(void *pvParameters)
 {
 	TickType_t xLastWakeTime;
 	uint32_t u32s_CycleTimeCounter = 0;
@@ -119,7 +110,7 @@ static void vHighCycleTask(void *pvParameters)
   * @param  pvParameters: パラメータのポインタ
   * @retval None
   */
-static void vMiddleCycleTask(void *pvParameters)
+static void prvMiddleCycleTask(void *pvParameters)
 {
 	uint32_t ulEventsToProcess;
 
