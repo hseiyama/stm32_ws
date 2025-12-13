@@ -32,6 +32,7 @@ volatile uint8_t ucLedReqData = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 static void prvAutoReloadTimerCallback(TimerHandle_t xTimer);
+static void vTimeOutJudge(void);
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -114,6 +115,9 @@ void vUartCtrlTask(void *pvParameters)
 	for (;;) {
 		/* UART出力値をキューに送信する */
 		xQueueSendToBack(xUartQueue, &ucValueToSend, 0);
+
+		/* タイムアウト判定処理 */
+		vTimeOutJudge();
 
 		/* 時間待ち(1000ms) 1000tick */
 		vTaskDelayUntil(&xLastWakeTime, 1000);
@@ -332,5 +336,40 @@ static void prvAutoReloadTimerCallback(TimerHandle_t xTimer)
 
 	/* UART出力値をキューに送信する */
 	xQueueSendToBack(xUartQueue, &ucValueToSend, 0);
+}
+
+/**
+  * @brief  タイムアウト判定処理
+  * @param  None
+  * @retval None
+  */
+static void vTimeOutJudge(void)
+{
+	static TimeOut_t xTimeOut;
+	static TickType_t xTicksToWait;
+	/* タイマー状態を停止側に設定 */
+	static uint8_t ucTimerState = pdFALSE;
+	uint8_t ucValueToSend = 'Q';
+
+	/* タイマーが停止している場合(初回のみ) */
+	if ( ucTimerState == pdFALSE ) {
+		/* タイマー開始時刻を記録する */
+		vTaskSetTimeOutState( &xTimeOut );
+		/* タイムアウト値を設定する */
+		xTicksToWait = 10000;
+		/* タイマー状態を起動側に設定 */
+		ucTimerState = pdTRUE;
+	}
+
+	/* タイムアウトを判定する */
+	if( xTaskCheckForTimeOut( &xTimeOut, &xTicksToWait ) != pdFALSE ) {
+		/* UART出力値をキューに送信する */
+		xQueueSendToBack(xUartQueue, &ucValueToSend, 0);
+
+		/* タイマー開始時刻を記録する(再起動に該当) */
+		vTaskSetTimeOutState( &xTimeOut );
+		/* タイムアウト値を設定する */
+		xTicksToWait = 10000;
+	}
 }
 
