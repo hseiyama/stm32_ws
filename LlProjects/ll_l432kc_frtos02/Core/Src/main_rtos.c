@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file           : main_rtos.c
-  * @brief          : MAINアプリケーション
+  * @brief          : MAINリアルタイムOS層
   ******************************************************************************
   */
 
@@ -93,6 +93,7 @@ static void prvHighCycleTask(void *pvParameters)
 	xLastWakeTime = xTaskGetTickCount();
 	/* タスク処理は無限ループ */
 	for (;;) {
+		u32s_CycleTimeCounter++;
 		/* 周期時間カウンターがシステムの周期時間[ms]に達した場合 */
 		if (u32s_CycleTimeCounter >= SYS_CYCLE_TIME) {
 			u32s_CycleTimeCounter = 0;
@@ -101,7 +102,6 @@ static void prvHighCycleTask(void *pvParameters)
 		}
 		/* 時間待ち(1ms) 1tick */
 		vTaskDelayUntil(&xLastWakeTime, 1);
-		u32s_CycleTimeCounter++;
 	}
 }
 
